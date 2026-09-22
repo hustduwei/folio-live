@@ -2,7 +2,15 @@ import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
 import { cn } from "cn"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Input({
+  className,
+  type = "text",
+  onChange,
+  onValueChange,
+  ...props
+}: React.ComponentProps<"input"> & {
+  onValueChange?: (value: string) => void
+}) {
   return (
     <InputPrimitive
       type={type}
@@ -12,6 +20,13 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         className
       )}
       {...props}
+      onValueChange={(value) => {
+        onValueChange?.(value)
+        onChange?.({
+          target: { value },
+          currentTarget: { value },
+        } as React.ChangeEvent<HTMLInputElement>)
+      }}
     />
   )
 }

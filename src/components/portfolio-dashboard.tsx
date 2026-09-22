@@ -29,9 +29,12 @@ export function PortfolioDashboard() {
   const [loading, setLoading] = useState(true);
   const [live, setLive] = useState(true);
 
-  const refresh = useCallback(async (silent = false) => {
+  const refresh = useCallback(async (silent = false, signal?: AbortSignal) => {
     try {
-      const response = await fetch("/api/snapshot", { cache: "no-store" });
+      const response = await fetch("/api/snapshot", {
+        cache: "no-store",
+        signal: signal ?? AbortSignal.timeout(12_000),
+      });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || "无法刷新行情");
@@ -41,24 +44,31 @@ export function PortfolioDashboard() {
       setError(data.quotesError);
       setLive(true);
     } catch (err) {
+      if (signal?.aborted || (err instanceof DOMException && err.name === "AbortError")) {
+        return;
+      }
       setLive(false);
       const message = err instanceof Error ? err.message : "网络异常";
       if (!silent) setError(message);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const state = snapshot?.market.state ?? "closed";
-    let first = true;
-    let timeout = window.setTimeout(function tick() {
-      void refresh(!first);
-      first = false;
-      timeout = window.setTimeout(tick, pollIntervalMs(state));
+    const controller = new AbortController();
+    const start = window.setTimeout(() => {
+      void refresh(false, AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]));
     }, 0);
-    return () => window.clearTimeout(timeout);
-  }, [refresh, snapshot?.market.state]);
+    const id = window.setInterval(() => {
+      void refresh(true);
+    }, pollIntervalMs("open"));
+    return () => {
+      controller.abort();
+      window.clearTimeout(start);
+      window.clearInterval(id);
+    };
+  }, [refresh]);
 
   async function deleteTrade(id: string) {
     try {

@@ -42,11 +42,18 @@ async function yahooJson<T>(url: string): Promise<T> {
       Accept: "application/json",
     },
     cache: "no-store",
+    signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) {
     throw new Error(`行情接口 ${response.status}`);
   }
   return (await response.json()) as T;
+}
+
+function downsample(points: number[], max = 40): number[] {
+  if (points.length <= max) return points;
+  const step = (points.length - 1) / (max - 1);
+  return Array.from({ length: max }, (_, index) => points[Math.round(index * step)] ?? points[0]);
 }
 
 function toQuote(symbol: string, meta: YahooSparkMeta, spark: number[]): Quote | null {
@@ -78,7 +85,7 @@ function toQuote(symbol: string, meta: YahooSparkMeta, spark: number[]): Quote |
     volume: Number.isFinite(Number(meta.regularMarketVolume))
       ? Number(meta.regularMarketVolume)
       : null,
-    spark,
+    spark: downsample(spark),
     marketTime,
   };
 }

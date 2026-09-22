@@ -23,10 +23,11 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [picked, setPicked] = useState(false);
 
   useEffect(() => {
     const q = symbol.trim();
-    if (q.length < 1) return;
+    if (picked || q.length < 1) return;
     const handle = window.setTimeout(async () => {
       setSearching(true);
       try {
@@ -40,7 +41,7 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
       }
     }, 220);
     return () => window.clearTimeout(handle);
-  }, [symbol]);
+  }, [symbol, picked]);
 
   const quoteHint = useMemo(() => {
     const code = symbol.trim().toUpperCase().replace(/\./g, "-");
@@ -50,8 +51,35 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
     return fromWatch?.price;
   }, [snapshot, symbol]);
 
+  function chooseHit(hit: SearchHit) {
+    setSymbol(hit.symbol);
+    setName(hit.name);
+    setHits([]);
+    setPicked(true);
+    const quoted =
+      snapshot?.holdings.find((row) => row.symbol === hit.symbol)?.price ??
+      snapshot?.watchlist.find((row) => row.symbol === hit.symbol)?.price;
+    if (quoted && !price) setPrice(String(quoted));
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    const code = symbol.trim();
+    const shareCount = Number(shares);
+    const fillPrice = Number(price || quoteHint);
+    if (!code) {
+      toast.error("请填写股票代码");
+      return;
+    }
+    if (!Number.isFinite(shareCount) || shareCount <= 0) {
+      toast.error("请填写大于 0 的股数");
+      return;
+    }
+    if (!Number.isFinite(fillPrice) || fillPrice <= 0) {
+      toast.error("请填写成交价");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const response = await fetch("/api/trades", {
@@ -59,10 +87,10 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           side,
-          symbol,
+          symbol: code,
           name,
-          shares: Number(shares),
-          price: Number(price || quoteHint),
+          shares: shareCount,
+          price: fillPrice,
           note,
         }),
       });
@@ -81,8 +109,10 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
     }
   }
 
+  const showHits = !picked && (hits.length > 0 || searching);
+
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
         <button
           type="button"
@@ -110,18 +140,18 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
         <Label htmlFor="symbol">代码或中文名</Label>
         <Input
           id="symbol"
+          name="symbol"
           value={symbol}
-          onChange={(event) => {
-            setSymbol(event.target.value.toUpperCase());
+          onValueChange={(value) => {
+            setSymbol(value.toUpperCase());
             setName("");
-            setHits([]);
+            setPicked(false);
           }}
           placeholder="AAPL 或 苹果"
           autoComplete="off"
-          required
         />
-        {(hits.length > 0 || searching) && (
-          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border bg-popover shadow-lg">
+        {showHits && (
+          <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border bg-popover shadow-lg">
             {searching && hits.length === 0 ? (
               <p className="px-3 py-2 text-xs text-muted-foreground">正在搜索…</p>
             ) : (
@@ -130,15 +160,8 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
                   key={`${hit.symbol}-${hit.name}`}
                   type="button"
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
-                  onClick={() => {
-                    setSymbol(hit.symbol);
-                    setName(hit.name);
-                    setHits([]);
-                    const quoted =
-                      snapshot?.holdings.find((row) => row.symbol === hit.symbol)?.price ??
-                      snapshot?.watchlist.find((row) => row.symbol === hit.symbol)?.price;
-                    if (quoted && !price) setPrice(String(quoted));
-                  }}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => chooseHit(hit)}
                 >
                   <span className="font-mono">{hit.symbol}</span>
                   <span className="truncate pl-3 text-xs text-muted-foreground">{hit.name}</span>
@@ -154,22 +177,28 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
           <Label htmlFor="shares">股数</Label>
           <Input
             id="shares"
+            name="shares"
+            type="text"
             inputMode="decimal"
             value={shares}
-            onChange={(event) => setShares(event.target.value)}
+            onValueChange={setShares}
+            onFocus={() => setHits([])}
             placeholder="10"
-            required
+            autoComplete="off"
           />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="price">成交价 USD</Label>
           <Input
             id="price"
+            name="price"
+            type="text"
             inputMode="decimal"
             value={price}
-            onChange={(event) => setPrice(event.target.value)}
+            onValueChange={setPrice}
+            onFocus={() => setHits([])}
             placeholder={quoteHint ? quoteHint.toFixed(2) : "180.00"}
-            required={!quoteHint}
+            autoComplete="off"
           />
         </div>
       </div>
@@ -178,13 +207,14 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
         <Label htmlFor="note">备注（可选）</Label>
         <Input
           id="note"
+          name="note"
           value={note}
-          onChange={(event) => setNote(event.target.value)}
+          onValueChange={setNote}
           placeholder="券商 / 账户"
         />
       </div>
 
-      <Button type="submit" disabled={submitting} className="w-full">
+      <Button type="submit" disabled={submitting} nativeButton className="w-full">
         {submitting ? "登记中…" : side === "buy" ? "记入买入" : "记入卖出"}
       </Button>
       <p className="text-xs leading-5 text-muted-foreground">
