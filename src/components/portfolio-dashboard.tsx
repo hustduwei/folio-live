@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AnimatedNumber } from "@/components/animated-number";
 import { FlashValue } from "@/components/flash-value";
@@ -23,52 +23,30 @@ import { pollIntervalMs } from "@/lib/market";
 import type { Snapshot } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export function PortfolioDashboard() {
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [live, setLive] = useState(true);
-
-  const refresh = useCallback(async (silent = false, signal?: AbortSignal) => {
-    try {
-      const response = await fetch("/api/snapshot", {
-        cache: "no-store",
-        signal: signal ?? AbortSignal.timeout(12_000),
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "无法刷新行情");
-      }
-      const data = (await response.json()) as Snapshot;
-      setSnapshot(data);
-      setError(data.quotesError);
-      setLive(true);
-    } catch (err) {
-      if (signal?.aborted || (err instanceof DOMException && err.name === "AbortError")) {
-        return;
-      }
-      setLive(false);
-      const message = err instanceof Error ? err.message : "网络异常";
-      if (!silent) setError(message);
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, []);
+export function PortfolioDashboard({ initialSnapshot }: { initialSnapshot: Snapshot }) {
+  const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [error, setError] = useState<string | null>(initialSnapshot.quotesError);
+  const [live, setLive] = useState(!initialSnapshot.quotesError);
 
   useEffect(() => {
-    const controller = new AbortController();
-    const start = window.setTimeout(() => {
-      void refresh(false, AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]));
-    }, 0);
     const id = window.setInterval(() => {
-      void refresh(true);
-    }, pollIntervalMs("open"));
-    return () => {
-      controller.abort();
-      window.clearTimeout(start);
-      window.clearInterval(id);
-    };
-  }, [refresh]);
+      void fetch("/api/snapshot", { cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || "无法刷新行情");
+          }
+          return response.json() as Promise<Snapshot>;
+        })
+        .then((data) => {
+          setSnapshot(data);
+          setError(data.quotesError);
+          setLive(true);
+        })
+        .catch(() => setLive(false));
+    }, pollIntervalMs(snapshot.market.state));
+    return () => window.clearInterval(id);
+  }, [snapshot.market.state]);
 
   async function deleteTrade(id: string) {
     try {
@@ -82,9 +60,9 @@ export function PortfolioDashboard() {
     }
   }
 
-  const totals = snapshot?.totals;
-  const market = snapshot?.market;
-  const allocation = snapshot?.holdings ?? [];
+  const totals = snapshot.totals;
+  const market = snapshot.market;
+  const allocation = snapshot.holdings;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -104,7 +82,7 @@ export function PortfolioDashboard() {
             />
             {live ? "实时更新" : "连接中断"}
           </Badge>
-          {market && (
+          {market.state && (
             <Badge
               variant={market.state === "open" ? "default" : "secondary"}
               className={cn(market.state === "open" && "bg-up text-white")}
@@ -113,8 +91,7 @@ export function PortfolioDashboard() {
             </Badge>
           )}
           <span className="font-mono text-xs text-muted-foreground">
-            纽约 {market?.nyTime ?? "--:--"}
-            {snapshot ? ` · 刷新 ${formatNyClock(snapshot.fetchedAt)}` : ""}
+            纽约 {market.nyTime} · 刷新 {formatNyClock(snapshot.fetchedAt)}
           </span>
         </div>
       </header>
@@ -130,17 +107,13 @@ export function PortfolioDashboard() {
           <CardHeader className="border-b">
             <CardDescription>当前总市值</CardDescription>
             <CardTitle className="flex flex-wrap items-end justify-between gap-3">
-              {loading && !snapshot ? (
-                <span className="h-12 w-64 animate-pulse rounded-md bg-muted" />
-              ) : (
-                <FlashValue value={totals?.marketValue ?? 0}>
-                  <AnimatedNumber
-                    value={totals?.marketValue ?? 0}
-                    format={formatUsd}
-                    className="font-mono text-4xl tracking-tight sm:text-5xl"
-                  />
-                </FlashValue>
-              )}
+              <FlashValue value={totals.marketValue}>
+                <AnimatedNumber
+                  value={totals.marketValue}
+                  format={formatUsd}
+                  className="font-mono text-4xl tracking-tight sm:text-5xl"
+                />
+              </FlashValue>
               {allocation.length > 0 && (
                 <AllocationBar holdings={allocation} />
               )}
@@ -149,21 +122,21 @@ export function PortfolioDashboard() {
           <CardContent className="grid grid-cols-2 gap-4 pt-4 sm:grid-cols-4">
             <Stat
               label="今日盈亏"
-              value={totals ? formatSignedUsd(totals.dayPnl) : "—"}
-              hint={totals ? formatPercent(totals.dayPnlPercent) : ""}
-              tone={totals?.dayPnl ?? 0}
+              value={formatSignedUsd(totals.dayPnl)}
+              hint={formatPercent(totals.dayPnlPercent)}
+              tone={totals.dayPnl}
             />
             <Stat
               label="累计盈亏"
-              value={totals ? formatSignedUsd(totals.pnl) : "—"}
-              hint={totals ? formatPercent(totals.pnlPercent) : ""}
-              tone={totals?.pnl ?? 0}
+              value={formatSignedUsd(totals.pnl)}
+              hint={formatPercent(totals.pnlPercent)}
+              tone={totals.pnl}
             />
-            <Stat label="持仓成本" value={totals ? formatUsd(totals.cost) : "—"} />
+            <Stat label="持仓成本" value={formatUsd(totals.cost)} />
             <Stat
               label="标的数"
-              value={snapshot ? String(snapshot.holdings.length) : "—"}
-              hint={snapshot && snapshot.holdings.length > 0 ? `共 ${snapshot.trades.length} 笔成交` : "等待第一笔买入"}
+              value={String(snapshot.holdings.length)}
+              hint={snapshot.holdings.length > 0 ? `共 ${snapshot.trades.length} 笔成交` : "等待第一笔买入"}
             />
           </CardContent>
         </Card>
@@ -185,11 +158,7 @@ export function PortfolioDashboard() {
           <CardDescription>按最新报价重估，平均成本法</CardDescription>
         </CardHeader>
         <CardContent>
-          {loading && !snapshot ? (
-            <div className="h-40 animate-pulse rounded-xl bg-muted" />
-          ) : (
-            <HoldingsTable holdings={snapshot?.holdings ?? []} />
-          )}
+          <HoldingsTable holdings={snapshot.holdings} />
         </CardContent>
       </Card>
 
@@ -200,7 +169,7 @@ export function PortfolioDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {(snapshot?.watchlist ?? []).map((quote) => (
+            {(snapshot.watchlist ?? []).map((quote) => (
               <div key={quote.symbol} className="rounded-xl border bg-background/50 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -229,11 +198,11 @@ export function PortfolioDashboard() {
           <CardDescription>这是持仓的唯一来源，撤掉一笔会重算仓位</CardDescription>
         </CardHeader>
         <CardContent>
-          {(snapshot?.trades.length ?? 0) === 0 ? (
+          {(snapshot.trades.length ?? 0) === 0 ? (
             <p className="text-sm text-muted-foreground">还没有成交。说一句买入，就会出现在这里。</p>
           ) : (
             <ul className="divide-y">
-              {snapshot?.trades.map((trade) => (
+              {snapshot.trades.map((trade) => (
                 <li key={trade.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <Badge
