@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { undoTrade } from "@/app/actions";
 import { AnimatedNumber } from "@/components/animated-number";
 import { FlashValue } from "@/components/flash-value";
 import { HoldingsTable } from "@/components/holdings-table";
@@ -23,9 +23,15 @@ import { pollIntervalMs } from "@/lib/market";
 import type { Snapshot } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export function PortfolioDashboard({ initialSnapshot }: { initialSnapshot: Snapshot }) {
+export function PortfolioDashboard({
+  initialSnapshot,
+  formError,
+}: {
+  initialSnapshot: Snapshot;
+  formError?: string;
+}) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
-  const [error, setError] = useState<string | null>(initialSnapshot.quotesError);
+  const [error, setError] = useState<string | null>(formError || initialSnapshot.quotesError);
   const [live, setLive] = useState(!initialSnapshot.quotesError);
 
   useEffect(() => {
@@ -40,25 +46,13 @@ export function PortfolioDashboard({ initialSnapshot }: { initialSnapshot: Snaps
         })
         .then((data) => {
           setSnapshot(data);
-          setError(data.quotesError);
+          setError(formError || data.quotesError);
           setLive(true);
         })
         .catch(() => setLive(false));
     }, pollIntervalMs(snapshot.market.state));
     return () => window.clearInterval(id);
-  }, [snapshot.market.state]);
-
-  async function deleteTrade(id: string) {
-    try {
-      const response = await fetch(`/api/trades?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "删除失败");
-      setSnapshot(data as Snapshot);
-      toast.success("已撤销这笔交易");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "删除失败");
-    }
-  }
+  }, [formError, snapshot.market.state]);
 
   const totals = snapshot.totals;
   const market = snapshot.market;
@@ -147,7 +141,7 @@ export function PortfolioDashboard({ initialSnapshot }: { initialSnapshot: Snaps
             <CardDescription>买入卖出都会立刻改总市值</CardDescription>
           </CardHeader>
           <CardContent>
-            <TradeForm snapshot={snapshot} onSnapshot={setSnapshot} />
+            <TradeForm snapshot={snapshot} />
           </CardContent>
         </Card>
       </section>
@@ -227,9 +221,12 @@ export function PortfolioDashboard({ initialSnapshot }: { initialSnapshot: Snaps
                     </span>
                     {trade.note && <span className="text-xs text-muted-foreground">{trade.note}</span>}
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => void deleteTrade(trade.id)}>
-                    撤销
-                  </Button>
+                  <form action={undoTrade}>
+                    <input type="hidden" name="id" value={trade.id} />
+                    <Button type="submit" variant="ghost" size="sm">
+                      撤销
+                    </Button>
+                  </form>
                 </li>
               ))}
             </ul>

@@ -1,18 +1,11 @@
 import * as React from "react"
-import { Input as InputPrimitive } from "@base-ui/react/input"
 import { cn } from "cn"
 
-function Input({
-  className,
-  type = "text",
-  onChange,
-  onValueChange,
-  ...props
-}: React.ComponentProps<"input"> & {
+function Input({ className, type = "text", onValueChange, onChange, ...props }: React.ComponentProps<"input"> & {
   onValueChange?: (value: string) => void
 }) {
   return (
-    <InputPrimitive
+    <input
       type={type}
       data-slot="input"
       className={cn(
@@ -20,12 +13,9 @@ function Input({
         className
       )}
       {...props}
-      onValueChange={(value) => {
-        onValueChange?.(value)
-        onChange?.({
-          target: { value },
-          currentTarget: { value },
-        } as React.ChangeEvent<HTMLInputElement>)
+      onChange={(event) => {
+        onChange?.(event)
+        onValueChange?.(event.currentTarget.value)
       }}
     />
   )

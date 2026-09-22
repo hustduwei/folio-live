@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { recordTrade } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,19 +10,14 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   snapshot: Snapshot | null;
-  onSnapshot: (snapshot: Snapshot) => void;
 };
 
-export function TradeForm({ snapshot, onSnapshot }: Props) {
+export function TradeForm({ snapshot }: Props) {
   const [side, setSide] = useState<TradeSide>("buy");
   const [symbol, setSymbol] = useState("");
   const [name, setName] = useState("");
-  const [shares, setShares] = useState("");
-  const [price, setPrice] = useState("");
-  const [note, setNote] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [picked, setPicked] = useState(false);
 
   useEffect(() => {
@@ -56,63 +51,15 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
     setName(hit.name);
     setHits([]);
     setPicked(true);
-    const quoted =
-      snapshot?.holdings.find((row) => row.symbol === hit.symbol)?.price ??
-      snapshot?.watchlist.find((row) => row.symbol === hit.symbol)?.price;
-    if (quoted && !price) setPrice(String(quoted));
-  }
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    const code = symbol.trim();
-    const shareCount = Number(shares);
-    const fillPrice = Number(price || quoteHint);
-    if (!code) {
-      toast.error("请填写股票代码");
-      return;
-    }
-    if (!Number.isFinite(shareCount) || shareCount <= 0) {
-      toast.error("请填写大于 0 的股数");
-      return;
-    }
-    if (!Number.isFinite(fillPrice) || fillPrice <= 0) {
-      toast.error("请填写成交价");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const response = await fetch("/api/trades", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          side,
-          symbol: code,
-          name,
-          shares: shareCount,
-          price: fillPrice,
-          note,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "登记失败");
-      }
-      onSnapshot(data as Snapshot);
-      toast.success(side === "buy" ? "已记入买入" : "已记入卖出");
-      setShares("");
-      setNote("");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "登记失败");
-    } finally {
-      setSubmitting(false);
-    }
   }
 
   const showHits = !picked && (hits.length > 0 || searching);
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form action={recordTrade} className="flex flex-col gap-4">
+      <input type="hidden" name="side" value={side} />
+      <input type="hidden" name="name" value={name} />
+
       <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
         <button
           type="button"
@@ -178,10 +125,8 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
           <Input
             id="shares"
             name="shares"
-            type="text"
             inputMode="decimal"
-            value={shares}
-            onValueChange={setShares}
+            defaultValue=""
             onFocus={() => setHits([])}
             placeholder="10"
             autoComplete="off"
@@ -192,10 +137,8 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
           <Input
             id="price"
             name="price"
-            type="text"
             inputMode="decimal"
-            value={price}
-            onValueChange={setPrice}
+            defaultValue=""
             onFocus={() => setHits([])}
             placeholder={quoteHint ? quoteHint.toFixed(2) : "180.00"}
             autoComplete="off"
@@ -205,17 +148,11 @@ export function TradeForm({ snapshot, onSnapshot }: Props) {
 
       <div className="space-y-1.5">
         <Label htmlFor="note">备注（可选）</Label>
-        <Input
-          id="note"
-          name="note"
-          value={note}
-          onValueChange={setNote}
-          placeholder="券商 / 账户"
-        />
+        <Input id="note" name="note" placeholder="券商 / 账户" autoComplete="off" />
       </div>
 
-      <Button type="submit" disabled={submitting} nativeButton className="w-full">
-        {submitting ? "登记中…" : side === "buy" ? "记入买入" : "记入卖出"}
+      <Button type="submit" className="w-full">
+        {side === "buy" ? "记入买入" : "记入卖出"}
       </Button>
       <p className="text-xs leading-5 text-muted-foreground">
         之后你也可以直接在对话里说：「买入 NVDA 5 股，成本 120」。我会改持仓，页面会自动跟上。

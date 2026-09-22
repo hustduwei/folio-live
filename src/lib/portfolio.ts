@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import seed from "../../data/portfolio.json";
 import type {
   Holding,
   PortfolioFile,
@@ -34,11 +35,17 @@ export async function readPortfolio(): Promise<PortfolioFile> {
     if (!parsed || !Array.isArray(parsed.trades)) return emptyPortfolio();
     return { version: 1, trades: parsed.trades };
   } catch {
+    if (Array.isArray(seed.trades)) {
+      return { version: 1, trades: seed.trades as PortfolioFile["trades"] };
+    }
     return emptyPortfolio();
   }
 }
 
 async function writePortfolio(portfolio: PortfolioFile): Promise<void> {
+  if (process.env.VERCEL) {
+    throw new Error("线上网站不能直接改持仓。把买入卖出发给我，我会更新页面。");
+  }
   await mkdir(DATA_DIR, { recursive: true });
   const tmp = `${DATA_FILE}.${process.pid}.tmp`;
   await writeFile(tmp, JSON.stringify(portfolio, null, 2) + "\n", "utf8");

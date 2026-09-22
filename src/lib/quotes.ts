@@ -99,43 +99,56 @@ export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
   const unique = [...new Set(symbols.map(normalizeSymbol).filter(Boolean))];
   if (unique.length === 0) return [];
 
-  const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${encodeURIComponent(unique.join(","))}&range=1d&interval=5m`;
-  const payload = await yahooJson<{ spark?: { result?: YahooSparkItem[]; error?: unknown } }>(url);
-  const rows = payload.spark?.result ?? [];
+  const hosts = ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"];
   const bySymbol = new Map<string, Quote>();
 
-  for (const row of rows) {
-    const meta = row.response?.[0]?.meta;
-    const symbol = normalizeSymbol(row.symbol || meta?.symbol || "");
-    if (!meta || !symbol) continue;
-    const quote = toQuote(symbol, meta, sparkCloses(row));
-    if (quote) bySymbol.set(symbol, quote);
+  for (const host of hosts) {
+    try {
+      const url = `${host}/v7/finance/spark?symbols=${encodeURIComponent(unique.join(","))}&range=1d&interval=5m`;
+      const payload = await yahooJson<{ spark?: { result?: YahooSparkItem[]; error?: unknown } }>(url);
+      const rows = payload.spark?.result ?? [];
+      for (const row of rows) {
+        const meta = row.response?.[0]?.meta;
+        const symbol = normalizeSymbol(row.symbol || meta?.symbol || "");
+        if (!meta || !symbol) continue;
+        const quote = toQuote(symbol, meta, sparkCloses(row));
+        if (quote) bySymbol.set(symbol, quote);
+      }
+      if (bySymbol.size === unique.length) break;
+    } catch {
+      // try next host
+    }
   }
 
   const missing = unique.filter((symbol) => !bySymbol.has(symbol));
   if (missing.length > 0) {
     await Promise.all(
       missing.map(async (symbol) => {
-        try {
-          const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d`;
-          const chart = await yahooJson<{
-            chart?: {
-              result?: Array<{
-                meta?: YahooSparkMeta;
-                timestamp?: number[];
-                indicators?: { quote?: Array<{ close?: Array<number | null> }> };
-              }>;
-            };
-          }>(chartUrl);
-          const result = chart.chart?.result?.[0];
-          if (!result?.meta) return;
-          const closes = (result.indicators?.quote?.[0]?.close ?? []).filter(
-            (value): value is number => typeof value === "number" && Number.isFinite(value),
-          );
-          const quote = toQuote(symbol, result.meta, closes);
-          if (quote) bySymbol.set(symbol, quote);
-        } catch {
-          // leave missing; caller shows quoteMissing
+        for (const host of hosts) {
+          try {
+            const chartUrl = `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d`;
+            const chart = await yahooJson<{
+              chart?: {
+                result?: Array<{
+                  meta?: YahooSparkMeta;
+                  timestamp?: number[];
+                  indicators?: { quote?: Array<{ close?: Array<number | null> }> };
+                }>;
+              };
+            }>(chartUrl);
+            const result = chart.chart?.result?.[0];
+            if (!result?.meta) continue;
+            const closes = (result.indicators?.quote?.[0]?.close ?? []).filter(
+              (value): value is number => typeof value === "number" && Number.isFinite(value),
+            );
+            const quote = toQuote(symbol, result.meta, closes);
+            if (quote) {
+              bySymbol.set(symbol, quote);
+              return;
+            }
+          } catch {
+            // try next host
+          }
         }
       }),
     );
