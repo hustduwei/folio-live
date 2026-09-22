@@ -1,0 +1,79 @@
+const usd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const usdCompact = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  notation: "standard",
+});
+
+export function formatUsd(value: number, digits = 2): string {
+  if (!Number.isFinite(value)) return "—";
+  if (digits === 2) return usdCompact.format(value);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
+export function formatUsdPrecise(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  const digits = abs >= 100 ? 2 : abs >= 1 ? 2 : 4;
+  return formatUsd(value, digits);
+}
+
+export function formatShares(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const digits = Number.isInteger(value) ? 0 : value < 1 ? 4 : 2;
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: Math.max(digits, 4),
+  }).format(value);
+}
+
+export function formatPercent(value: number, digits = 2): string {
+  if (!Number.isFinite(value)) return "—";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(digits)}%`;
+}
+
+export function formatSignedUsd(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${usd.format(value)}`;
+}
+
+export function signedClass(value: number): string {
+  if (!Number.isFinite(value) || value === 0) return "text-muted-foreground";
+  return value > 0 ? "text-up" : "text-down";
+}
+
+export function formatVolume(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return String(value);
+}
+
+export function formatNyClock(iso: string): string {
+  const date = new Date(iso);
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "America/New_York",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+}
