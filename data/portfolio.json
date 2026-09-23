@@ -2,64 +2,112 @@
   "version": 1,
   "trades": [
     {
-      "id": "demo-nvda",
-      "symbol": "NVDA",
-      "name": "NVIDIA Corporation",
+      "id": "pos-crcl",
+      "symbol": "CRCL",
+      "name": "Circle Internet Group",
       "side": "buy",
-      "shares": 8,
-      "price": 120,
-      "executedAt": "2026-01-15T15:30:00.000Z",
-      "note": "示例仓，可撤销"
+      "shares": 133,
+      "price": 100.605,
+      "executedAt": "2026-03-04T15:30:00.000Z"
     },
     {
-      "id": "demo-aapl",
-      "symbol": "AAPL",
-      "name": "Apple Inc.",
+      "id": "pos-hims",
+      "symbol": "HIMS",
+      "name": "Hims & Hers Health",
+      "side": "buy",
+      "shares": 213,
+      "price": 34.594,
+      "executedAt": "2026-03-11T15:30:00.000Z"
+    },
+    {
+      "id": "pos-tsla",
+      "symbol": "TSLA",
+      "name": "特斯拉",
       "side": "buy",
       "shares": 15,
-      "price": 180,
-      "executedAt": "2026-02-03T15:30:00.000Z",
-      "note": "示例仓，可撤销"
+      "price": 296.826,
+      "executedAt": "2026-04-02T14:30:00.000Z"
     },
     {
-      "id": "demo-tsla",
-      "symbol": "TSLA",
-      "name": "Tesla, Inc.",
+      "id": "pos-lite",
+      "symbol": "LITE",
+      "name": "Lumentum 控股",
       "side": "buy",
-      "shares": 6,
-      "price": 240,
-      "executedAt": "2026-03-12T14:30:00.000Z",
-      "note": "示例仓，可撤销"
+      "shares": 5,
+      "price": 896.8,
+      "executedAt": "2026-04-16T14:30:00.000Z"
     },
     {
-      "id": "demo-amzn",
-      "symbol": "AMZN",
-      "name": "Amazon.com, Inc.",
-      "side": "buy",
-      "shares": 4,
-      "price": 180,
-      "executedAt": "2026-04-08T14:30:00.000Z",
-      "note": "示例仓，可撤销"
-    },
-    {
-      "id": "demo-jpm",
-      "symbol": "JPM",
-      "name": "JPMorgan Chase & Co.",
-      "side": "buy",
-      "shares": 10,
-      "price": 200,
-      "executedAt": "2026-05-20T14:30:00.000Z",
-      "note": "示例仓，可撤销"
-    },
-    {
-      "id": "demo-baba",
-      "symbol": "BABA",
-      "name": "Alibaba Group Holding Limited",
+      "id": "pos-nvda",
+      "symbol": "NVDA",
+      "name": "英伟达",
       "side": "buy",
       "shares": 20,
-      "price": 85,
-      "executedAt": "2026-06-11T14:30:00.000Z",
-      "note": "示例仓，可撤销"
+      "price": 208.593,
+      "executedAt": "2026-05-06T14:30:00.000Z"
+    },
+    {
+      "id": "pos-mstr",
+      "symbol": "MSTR",
+      "name": "Strategy",
+      "side": "buy",
+      "shares": 15,
+      "price": 242.447,
+      "executedAt": "2026-05-20T14:30:00.000Z"
+    },
+    {
+      "id": "pos-smr",
+      "symbol": "SMR",
+      "name": "NuScale Power",
+      "side": "buy",
+      "shares": 223,
+      "price": 14.621,
+      "executedAt": "2026-06-03T14:30:00.000Z"
+    },
+    {
+      "id": "pos-vsat",
+      "symbol": "VSAT",
+      "name": "卫讯公司",
+      "side": "buy",
+      "shares": 25,
+      "price": 66.14,
+      "executedAt": "2026-06-17T14:30:00.000Z"
+    },
+    {
+      "id": "pos-oklo",
+      "symbol": "OKLO",
+      "name": "Oklo",
+      "side": "buy",
+      "shares": 40,
+      "price": 74.753,
+      "executedAt": "2026-07-08T14:30:00.000Z"
+    },
+    {
+      "id": "pos-rklb",
+      "symbol": "RKLB",
+      "name": "Rocket Lab",
+      "side": "buy",
+      "shares": 20,
+      "price": 41.176,
+      "executedAt": "2026-07-22T14:30:00.000Z"
+    },
+    {
+      "id": "pos-rxrx",
+      "symbol": "RXRX",
+      "name": "Recursion Pharmaceuticals",
+      "side": "buy",
+      "shares": 320,
+      "price": 3.481,
+      "executedAt": "2026-08-05T14:30:00.000Z"
+    },
+    {
+      "id": "pos-pltr",
+      "symbol": "PLTR",
+      "name": "Palantir Tech",
+      "side": "buy",
+      "shares": 5,
+      "price": 135.578,
+      "executedAt": "2026-08-19T14:30:00.000Z"
     }
   ]
 }

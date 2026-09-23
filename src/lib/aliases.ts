@@ -48,17 +48,31 @@ export const SYMBOL_ALIASES: Record<string, string> = {
   万事达: "MA",
   Paypal: "PYPL",
   paypal: "PYPL",
+  circle: "CRCL",
+  hims: "HIMS",
+  lumentum: "LITE",
+  光通讯: "LITE",
+  strategy: "MSTR",
+  微策略: "MSTR",
+  nuscale: "SMR",
+  卫讯: "VSAT",
+  oklo: "OKLO",
+  "rocket lab": "RKLB",
+  火箭实验室: "RKLB",
+  recursion: "RXRX",
+  palantir: "PLTR",
+  帕兰提尔: "PLTR",
 };
 
 export const WATCHLIST = [
-  "AAPL",
-  "MSFT",
-  "NVDA",
-  "AMZN",
-  "GOOGL",
-  "META",
+  "CRCL",
+  "HIMS",
   "TSLA",
-  "AVGO",
+  "LITE",
+  "NVDA",
+  "MSTR",
+  "SMR",
+  "RKLB",
 ];
 
 export function resolveAlias(query: string): string | null {
