@@ -26,17 +26,27 @@ function withLock<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-const emptyPortfolio = (): PortfolioFile => ({ version: 1, trades: [] });
+const emptyPortfolio = (): PortfolioFile => ({ version: 1, cash: 0, trades: [] });
+
+function normalizeCash(value: unknown): number {
+  const cash = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(cash) || cash < 0) return 0;
+  return Math.round(cash * 100) / 100;
+}
 
 export async function readPortfolio(): Promise<PortfolioFile> {
   try {
     const raw = await readFile(DATA_FILE, "utf8");
     const parsed = JSON.parse(raw) as PortfolioFile;
     if (!parsed || !Array.isArray(parsed.trades)) return emptyPortfolio();
-    return { version: 1, trades: parsed.trades };
+    return { version: 1, cash: normalizeCash(parsed.cash), trades: parsed.trades };
   } catch {
     if (Array.isArray(seed.trades)) {
-      return { version: 1, trades: seed.trades as PortfolioFile["trades"] };
+      return {
+        version: 1,
+        cash: normalizeCash((seed as PortfolioFile).cash),
+        trades: seed.trades as PortfolioFile["trades"],
+      };
     }
     return emptyPortfolio();
   }
@@ -118,28 +128,46 @@ export function deriveHoldings(trades: Trade[], quotes: Quote[]): Holding[] {
     });
   }
 
-  const totalValue = holdings.reduce((sum, row) => sum + row.marketValue, 0);
+  const stockValue = holdings.reduce((sum, row) => sum + row.marketValue, 0);
   for (const row of holdings) {
-    row.weight = totalValue > 0 ? (row.marketValue / totalValue) * 100 : 0;
+    row.weight = stockValue > 0 ? (row.marketValue / stockValue) * 100 : 0;
   }
 
   holdings.sort((a, b) => b.marketValue - a.marketValue);
   return holdings;
 }
 
-export function summarize(holdings: Holding[]): PortfolioTotals {
+export function summarize(holdings: Holding[], cash = 0): PortfolioTotals {
   const marketValue = holdings.reduce((sum, row) => sum + row.marketValue, 0);
   const cost = holdings.reduce((sum, row) => sum + row.cost, 0);
   const pnl = marketValue - cost;
   const dayPnl = holdings.reduce((sum, row) => sum + row.dayPnl, 0);
+  const safeCash = normalizeCash(cash);
+  const netValue = marketValue + safeCash;
   return {
     marketValue,
     cost,
+    cash: safeCash,
+    netValue,
+    cashWeight: netValue > 0 ? (safeCash / netValue) * 100 : 0,
     pnl,
     pnlPercent: cost > 0 ? (pnl / cost) * 100 : 0,
     dayPnl,
     dayPnlPercent: marketValue - dayPnl > 0 ? (dayPnl / (marketValue - dayPnl)) * 100 : 0,
   };
+}
+
+export async function setCash(amount: number): Promise<number> {
+  const cash = normalizeCash(amount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error("现金必须是大于等于 0 的数字");
+  }
+  return withLock(async () => {
+    const portfolio = await readPortfolio();
+    portfolio.cash = cash;
+    await writePortfolio(portfolio);
+    return portfolio.cash;
+  });
 }
 
 export function heldShares(trades: Trade[], symbol: string): number {
@@ -206,6 +234,6 @@ export async function removeTrade(id: string): Promise<void> {
     if (negative) {
       throw new Error("删除后持仓会变成负数，先处理后续卖出记录");
     }
-    await writePortfolio({ version: 1, trades: next });
+    await writePortfolio({ version: 1, cash: portfolio.cash, trades: next });
   });
 }

@@ -66,6 +66,8 @@ export function PortfolioDashboard({
   const totals = snapshot.totals;
   const market = snapshot.market;
   const sectors = snapshot.sectors ?? [];
+  const stockSectors = sectors.filter((sector) => sector.key !== "cash");
+  const cash = totals.cash ?? 0;
 
   return (
     <div className="sheet mx-auto w-full max-w-[1180px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -100,7 +102,13 @@ export function PortfolioDashboard({
           </h1>
           <p className="mt-2.5 text-sm tracking-[0.02em] text-muted-foreground">
             按板块分类的仓位占比 · <b className="text-foreground">{snapshot.holdings.length}</b> 个标的 ·{" "}
-            <b className="text-foreground">{sectors.length}</b> 大板块
+            <b className="text-foreground">{stockSectors.length}</b> 大板块
+            {cash > 0 ? (
+              <>
+                {" "}
+                · 现金 <b className="text-foreground">{formatUsd(cash)}</b>
+              </>
+            ) : null}
             {market.state === "open" || market.state === "pre" || market.state === "post"
               ? " · 报价每 3 秒刷新"
               : " · 美股已收盘，显示最新价"}
@@ -116,20 +124,24 @@ export function PortfolioDashboard({
 
       <section className="mb-3.5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <StatTile
-          label="总市值"
-          en="Value"
+          label="净资产"
+          en="Net"
           color="#0369A1"
           delay={0.1}
           value={
-            <FlashValue value={totals.marketValue}>
+            <FlashValue value={totals.netValue ?? totals.marketValue + cash}>
               <AnimatedNumber
-                value={totals.marketValue}
+                value={totals.netValue ?? totals.marketValue + cash}
                 format={formatUsd}
                 className="font-display text-[clamp(26px,3vw,38px)] font-extrabold tracking-[-0.01em]"
               />
             </FlashValue>
           }
-          hint={snapshot.holdings.length > 0 ? `${snapshot.holdings.length} 只股票` : "等待第一笔买入"}
+          hint={
+            snapshot.holdings.length > 0
+              ? `股票 ${formatUsd(totals.marketValue)}`
+              : "等待第一笔买入"
+          }
         />
         <StatTile
           label="今日"
@@ -154,20 +166,28 @@ export function PortfolioDashboard({
               {formatSignedUsd(totals.pnl)}
             </span>
           }
-          hint={formatPercent(totals.pnlPercent)}
+          hint={`${formatPercent(totals.pnlPercent)} · 成本 ${formatUsd(totals.cost)}`}
           tone={totals.pnl}
         />
         <StatTile
-          label="成本"
-          en="Cost"
-          color="#8A94B0"
+          label="现金"
+          en="Cash"
+          color="#5B6478"
           delay={0.28}
           value={
-            <span className="font-display text-[clamp(26px,3vw,38px)] font-extrabold tracking-[-0.01em] text-foreground">
-              {formatUsd(totals.cost)}
-            </span>
+            <FlashValue value={cash}>
+              <AnimatedNumber
+                value={cash}
+                format={formatUsd}
+                className="font-display text-[clamp(26px,3vw,38px)] font-extrabold tracking-[-0.01em]"
+              />
+            </FlashValue>
           }
-          hint={snapshot.trades.length > 0 ? `共 ${snapshot.trades.length} 笔成交` : "平均成本法"}
+          hint={
+            cash > 0
+              ? `占总资产 ${formatWeight(totals.cashWeight ?? 0)}`
+              : "还没有登记现金"
+          }
         />
       </section>
 
@@ -176,7 +196,17 @@ export function PortfolioDashboard({
         <HoldingsTreemap sectors={sectors} />
       </div>
 
-      <SectionTitle title="板块配置" tag="Allocation" hint={sectors.length > 0 ? `占股票总仓位 ${formatWeight(sectors.reduce((s, x) => s + x.weight, 0))}` : undefined} />
+      <SectionTitle
+        title="板块配置"
+        tag="Allocation"
+        hint={
+          sectors.length > 0
+            ? cash > 0
+              ? `占总资产 ${formatWeight(sectors.reduce((sum, sector) => sum + sector.weight, 0))}`
+              : `占股票总仓位 ${formatWeight(sectors.reduce((sum, sector) => sum + sector.weight, 0))}`
+            : undefined
+        }
+      />
       <SectorAllocation sectors={sectors} />
 
       <SectionTitle title="板块明细" tag="Sectors" hint="涨跌按最新报价，红涨绿跌" />

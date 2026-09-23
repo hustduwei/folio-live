@@ -2,7 +2,7 @@ import { WATCHLIST } from "./aliases";
 import { getMarketClock } from "./market";
 import { deriveHoldings, readPortfolio, summarize } from "./portfolio";
 import { fetchQuotes, normalizeSymbol } from "./quotes";
-import { groupBySector } from "./sectors";
+import { attachCashSector, groupBySector } from "./sectors";
 import type { Snapshot } from "./types";
 
 let lastGood: Snapshot | null = null;
@@ -39,17 +39,18 @@ async function assemble(maxWaitMs?: number): Promise<Snapshot> {
   }
 
   const holdings = deriveHoldings(portfolio.trades, quotes);
+  const totals = summarize(holdings, portfolio.cash);
   const snapshot: Snapshot = {
     fetchedAt: new Date().toISOString(),
     market: getMarketClock(),
     quotesError,
     holdings,
-    sectors: groupBySector(holdings),
+    sectors: attachCashSector(groupBySector(holdings), totals.cash, totals.netValue),
     watchlist: quotes.filter((quote) => WATCHLIST.includes(quote.symbol)),
     trades: [...portfolio.trades].sort(
       (a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),
     ),
-    totals: summarize(holdings),
+    totals,
   };
   lastGood = snapshot;
   return snapshot;

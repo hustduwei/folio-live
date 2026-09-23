@@ -13,6 +13,7 @@ export type Trade = {
 
 export type PortfolioFile = {
   version: 1;
+  cash: number;
   trades: Trade[];
 };
 
@@ -64,6 +65,9 @@ export type Holding = {
 export type PortfolioTotals = {
   marketValue: number;
   cost: number;
+  cash: number;
+  netValue: number;
+  cashWeight: number;
   pnl: number;
   pnlPercent: number;
   dayPnl: number;

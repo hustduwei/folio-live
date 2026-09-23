@@ -16,6 +16,9 @@ const emptySnapshot = (): Snapshot => ({
   totals: {
     marketValue: 0,
     cost: 0,
+    cash: 0,
+    netValue: 0,
+    cashWeight: 0,
     pnl: 0,
     pnlPercent: 0,
     dayPnl: 0,

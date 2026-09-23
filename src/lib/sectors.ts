@@ -12,6 +12,7 @@ export const SECTOR_CATALOG: SectorMeta[] = [
   { key: "crypto", zh: "加密货币", en: "Crypto", icon: "₿", hex: "#DC5C14" },
   { key: "etf", zh: "指数 / ETF", en: "Index & ETF", icon: "▣", hex: "#8A94B0" },
   { key: "other", zh: "其他", en: "Other", icon: "•", hex: "#3C3C3C" },
+  { key: "cash", zh: "现金", en: "Cash", icon: "$", hex: "#8A94B0" },
 ];
 
 const SYMBOL_SECTOR: Record<string, string> = {
@@ -131,9 +132,12 @@ export const TICKER_HEX: Record<string, string> = {
   SMR: "#CA8A04",
   OKLO: "#B45309",
   RXRX: "#0F766E",
+  现金: "#8A94B0",
+  CASH: "#8A94B0",
+  USD: "#8A94B0",
 };
 
-const FALLBACK = SECTOR_CATALOG[SECTOR_CATALOG.length - 1];
+const FALLBACK = SECTOR_CATALOG.find((sector) => sector.key === "other") ?? SECTOR_CATALOG[0];
 
 export function sectorOf(symbol: string): SectorMeta {
   const key = SYMBOL_SECTOR[symbol] ?? "other";
@@ -195,4 +199,53 @@ export function groupBySector(holdings: Holding[]): SectorGroup[] {
     });
   }
   return groups.sort((a, b) => b.marketValue - a.marketValue);
+}
+
+export function attachCashSector(
+  sectors: SectorGroup[],
+  cash: number,
+  netValue: number,
+): SectorGroup[] {
+  if (!(cash > 0) || !(netValue > 0)) return sectors;
+
+  const scaled = sectors.map((sector) => ({
+    ...sector,
+    weight: (sector.marketValue / netValue) * 100,
+    holdings: sector.holdings.map((row) => ({
+      ...row,
+      weight: (row.marketValue / netValue) * 100,
+    })),
+  }));
+
+  const cashMeta = SECTOR_CATALOG.find((sector) => sector.key === "cash") ?? {
+    key: "cash",
+    zh: "现金",
+    en: "Cash",
+    icon: "$",
+    hex: "#8A94B0",
+  };
+
+  scaled.push({
+    ...cashMeta,
+    weight: (cash / netValue) * 100,
+    marketValue: cash,
+    dayPnl: 0,
+    pnl: 0,
+    holdings: [
+      {
+        symbol: "现金",
+        name: "美元",
+        weight: (cash / netValue) * 100,
+        sectorWeight: 100,
+        marketValue: cash,
+        changePercent: 0,
+        dayPnl: 0,
+        pnl: 0,
+        shares: 1,
+        price: cash,
+      },
+    ],
+  });
+
+  return scaled.sort((a, b) => b.marketValue - a.marketValue);
 }

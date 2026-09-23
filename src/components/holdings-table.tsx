@@ -27,7 +27,7 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
       <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed border-black/10 px-6 py-10 text-center">
         <p className="font-display text-lg font-bold">还没有持仓</p>
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          直接跟我说买入或卖出，例如「买入 AAPL 10 股，成本 180」；也可以在上面把成交登记进来。登记后地图和总市值会跟着行情走。
+          直接跟我说买入、卖出或现金余额，例如「买入 AAPL 10 股，成本 180」。登记后地图和净资产会跟着行情走。
         </p>
       </div>
     );
