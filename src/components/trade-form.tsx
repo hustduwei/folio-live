@@ -1,24 +1,32 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { recordTrade } from "@/app/actions";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { resolveAlias } from "@/lib/aliases";
 import type { SearchHit, Snapshot, TradeSide } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type Props = {
   snapshot: Snapshot | null;
+  onTraded?: (snapshot: Snapshot) => void;
 };
 
-export function TradeForm({ snapshot }: Props) {
+export function TradeForm({ snapshot, onTraded }: Props) {
+  const router = useRouter();
   const [side, setSide] = useState<TradeSide>("buy");
   const [symbol, setSymbol] = useState("");
   const [name, setName] = useState("");
+  const [shares, setShares] = useState("");
+  const [price, setPrice] = useState("");
+  const [note, setNote] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
   const [picked, setPicked] = useState(false);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     const q = symbol.trim();
@@ -39,7 +47,7 @@ export function TradeForm({ snapshot }: Props) {
   }, [symbol, picked]);
 
   const quoteHint = useMemo(() => {
-    const code = symbol.trim().toUpperCase().replace(/\./g, "-");
+    const code = (resolveAlias(symbol) || symbol).trim().toUpperCase().replace(/\./g, "-");
     const fromHoldings = snapshot?.holdings.find((row) => row.symbol === code);
     if (fromHoldings) return fromHoldings.price;
     const fromWatch = snapshot?.watchlist.find((row) => row.symbol === code);
@@ -53,13 +61,58 @@ export function TradeForm({ snapshot }: Props) {
     setPicked(true);
   }
 
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const raw = symbol.trim();
+    const code = resolveAlias(raw) || raw.toUpperCase().replace(/\s+/g, "").replace(/\./g, "-");
+    const shareCount = Number(shares);
+    const typedPrice = Number(price);
+
+    if (!code) {
+      toast.error("请填写股票代码");
+      return;
+    }
+    if (!Number.isFinite(shareCount) || shareCount <= 0) {
+      toast.error("请填写大于 0 的股数");
+      return;
+    }
+
+    setPending(true);
+    try {
+      const response = await fetch("/api/trades", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          side,
+          symbol: code,
+          name: name.trim() || undefined,
+          shares: shareCount,
+          price: Number.isFinite(typedPrice) && typedPrice > 0 ? typedPrice : undefined,
+          note: note.trim() || undefined,
+        }),
+      });
+      const data = (await response.json()) as Snapshot & { error?: string };
+      if (!response.ok) {
+        toast.error(data.error || "登记失败");
+        return;
+      }
+      toast.success(side === "buy" ? `已买入 ${code} ${shareCount} 股` : `已卖出 ${code} ${shareCount} 股`);
+      setShares("");
+      setPrice("");
+      setNote("");
+      onTraded?.(data);
+      router.refresh();
+    } catch {
+      toast.error("登记失败");
+    } finally {
+      setPending(false);
+    }
+  }
+
   const showHits = !picked && (hits.length > 0 || searching);
 
   return (
-    <form action={recordTrade} className="flex flex-col gap-4">
-      <input type="hidden" name="side" value={side} />
-      <input type="hidden" name="name" value={name} />
-
+    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
         <button
           type="button"
@@ -87,7 +140,6 @@ export function TradeForm({ snapshot }: Props) {
         <Label htmlFor="symbol">代码或中文名</Label>
         <Input
           id="symbol"
-          name="symbol"
           value={symbol}
           onValueChange={(value) => {
             setSymbol(value.toUpperCase());
@@ -125,9 +177,9 @@ export function TradeForm({ snapshot }: Props) {
           <Label htmlFor="shares">股数</Label>
           <Input
             id="shares"
-            name="shares"
             inputMode="decimal"
-            defaultValue=""
+            value={shares}
+            onValueChange={setShares}
             onFocus={() => setHits([])}
             className="h-10"
             placeholder="10"
@@ -138,9 +190,9 @@ export function TradeForm({ snapshot }: Props) {
           <Label htmlFor="price">成交价 USD</Label>
           <Input
             id="price"
-            name="price"
             inputMode="decimal"
-            defaultValue=""
+            value={price}
+            onValueChange={setPrice}
             onFocus={() => setHits([])}
             className="h-10"
             placeholder={quoteHint ? quoteHint.toFixed(2) : "180.00"}
@@ -151,11 +203,18 @@ export function TradeForm({ snapshot }: Props) {
 
       <div className="space-y-1.5">
         <Label htmlFor="note">备注（可选）</Label>
-        <Input id="note" name="note" className="h-10" placeholder="券商 / 账户" autoComplete="off" />
+        <Input
+          id="note"
+          value={note}
+          onValueChange={setNote}
+          className="h-10"
+          placeholder="券商 / 账户"
+          autoComplete="off"
+        />
       </div>
 
-      <Button type="submit" className="w-full">
-        {side === "buy" ? "记入买入" : "记入卖出"}
+      <Button type="submit" className="w-full" disabled={pending}>
+        {pending ? "登记中…" : side === "buy" ? "记入买入" : "记入卖出"}
       </Button>
       <p className="text-xs leading-5 text-muted-foreground">
         之后你也可以直接在对话里说：「买入 NVDA 5 股，成本 120」。我会改持仓，页面会自动跟上。

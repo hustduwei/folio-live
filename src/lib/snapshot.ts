@@ -51,8 +51,6 @@ async function assemble(maxWaitMs?: number): Promise<Snapshot> {
     ),
     totals: summarize(holdings),
   };
-  if (!quotesError || snapshot.holdings.some((row) => !row.quoteMissing)) {
-    lastGood = snapshot;
-  }
+  lastGood = snapshot;
   return snapshot;
 }

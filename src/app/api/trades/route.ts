@@ -24,17 +24,26 @@ export async function POST(request: Request) {
     }
 
     const symbol = normalizeSymbol(body.symbol || "");
+    if (!symbol) {
+      return NextResponse.json({ error: "请填写股票代码" }, { status: 400 });
+    }
     const shares = Number(body.shares);
-    const price = Number(body.price);
+    if (!Number.isFinite(shares) || shares <= 0) {
+      return NextResponse.json({ error: "请填写大于 0 的股数" }, { status: 400 });
+    }
 
-    let name = body.name?.trim();
-    if (!name) {
-      try {
-        const [quote] = await fetchQuotes([symbol]);
-        name = quote?.name || symbol;
-      } catch {
-        name = symbol;
-      }
+    let name = body.name?.trim() || "";
+    let price = Number(body.price);
+    try {
+      const [quote] = await fetchQuotes([symbol]);
+      name = name || quote?.name || symbol;
+      if (!(Number.isFinite(price) && price > 0)) price = quote?.price || 0;
+    } catch {
+      name = name || symbol;
+    }
+
+    if (!(Number.isFinite(price) && price > 0)) {
+      return NextResponse.json({ error: "请填写成交价" }, { status: 400 });
     }
 
     await addTrade({

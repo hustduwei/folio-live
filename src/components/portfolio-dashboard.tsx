@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { undoTrade } from "@/app/actions";
 import { AnimatedNumber } from "@/components/animated-number";
 import { FlashValue } from "@/components/flash-value";
 import { HoldingsTable } from "@/components/holdings-table";
@@ -192,7 +191,7 @@ export function PortfolioDashboard({
       <section className="mt-8 grid items-start gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
           <SectionHead title="登记成交" tag="Trade" desc="买入卖出都会立刻改总市值和地图" />
-          <TradeForm snapshot={snapshot} />
+          <TradeForm snapshot={snapshot} onTraded={setSnapshot} />
         </div>
         <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
           <SectionHead title="行情条" tag="Tape" desc="热门美股，用来确认报价是活的" />
@@ -254,12 +253,24 @@ export function PortfolioDashboard({
                   </span>
                   {trade.note && <span className="text-xs text-muted-foreground">{trade.note}</span>}
                 </div>
-                <form action={undoTrade}>
-                  <input type="hidden" name="id" value={trade.id} />
-                  <Button type="submit" variant="ghost" size="sm">
-                    撤销
-                  </Button>
-                </form>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    void fetch(`/api/trades?id=${encodeURIComponent(trade.id)}`, { method: "DELETE" })
+                      .then(async (response) => {
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || "撤销失败");
+                        setSnapshot(data);
+                      })
+                      .catch((error: unknown) => {
+                        setError(error instanceof Error ? error.message : "撤销失败");
+                      });
+                  }}
+                >
+                  撤销
+                </Button>
               </li>
             ))}
           </ul>
