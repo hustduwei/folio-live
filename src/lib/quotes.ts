@@ -95,9 +95,16 @@ function sparkCloses(item: YahooSparkItem): number[] {
   return closes.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
 }
 
+const QUOTE_CACHE_MS = 2_500;
+let quoteCache: { key: string; at: number; quotes: Quote[] } | null = null;
+
 export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
   const unique = [...new Set(symbols.map(normalizeSymbol).filter(Boolean))];
   if (unique.length === 0) return [];
+  const cacheKey = unique.join(",");
+  if (quoteCache && quoteCache.key === cacheKey && Date.now() - quoteCache.at < QUOTE_CACHE_MS) {
+    return quoteCache.quotes;
+  }
 
   const hosts = ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"];
   const bySymbol = new Map<string, Quote>();
@@ -154,7 +161,11 @@ export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
     );
   }
 
-  return unique.map((symbol) => bySymbol.get(symbol)).filter((quote): quote is Quote => Boolean(quote));
+  const quotes = unique
+    .map((symbol) => bySymbol.get(symbol))
+    .filter((quote): quote is Quote => Boolean(quote));
+  quoteCache = { key: cacheKey, at: Date.now(), quotes };
+  return quotes;
 }
 
 export async function fetchWatchlistQuotes(extra: string[] = []): Promise<Quote[]> {

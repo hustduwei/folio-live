@@ -6,6 +6,7 @@ function nyParts(date = new Date()) {
     weekday: "short",
     hour: "numeric",
     minute: "numeric",
+    second: "numeric",
     hourCycle: "h23",
     year: "numeric",
     month: "2-digit",
@@ -19,6 +20,7 @@ function nyParts(date = new Date()) {
     weekday: get("weekday"),
     hour: Number(get("hour")),
     minute: Number(get("minute")),
+    second: Number(get("second")),
     year: get("year"),
     month: get("month"),
     day: get("day"),
@@ -29,7 +31,7 @@ export function getMarketClock(date = new Date()): MarketClock {
   const ny = nyParts(date);
   const minutes = ny.hour * 60 + ny.minute;
   const weekend = ny.weekday === "Sat" || ny.weekday === "Sun";
-  const nyTime = `${String(ny.hour).padStart(2, "0")}:${String(ny.minute).padStart(2, "0")}`;
+  const nyTime = `${String(ny.hour).padStart(2, "0")}:${String(ny.minute).padStart(2, "0")}:${String(ny.second).padStart(2, "0")}`;
   const nyDate = `${ny.year}-${ny.month}-${ny.day}`;
 
   let state: MarketState = "closed";
@@ -49,6 +51,8 @@ export function getMarketClock(date = new Date()): MarketClock {
   return { state, label: labels[state], nyTime, nyDate };
 }
 
-export function pollIntervalMs(state: MarketState): number {
-  return state === "closed" ? 20_000 : 5_000;
+export const QUOTE_POLL_MS = 3_000;
+
+export function pollIntervalMs(): number {
+  return QUOTE_POLL_MS;
 }

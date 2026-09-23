@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  formatNyClock,
   formatPercent,
   formatShares,
   formatSignedUsd,
@@ -19,7 +18,8 @@ import {
   formatUsdPrecise,
   signedClass,
 } from "@/lib/format";
-import { pollIntervalMs } from "@/lib/market";
+import { LiveClock } from "@/components/live-clock";
+import { QUOTE_POLL_MS } from "@/lib/market";
 import type { Snapshot } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,8 @@ export function PortfolioDashboard({
   const [live, setLive] = useState(!initialSnapshot.quotesError);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
+    let cancelled = false;
+    const load = () => {
       void fetch("/api/snapshot", { cache: "no-store" })
         .then(async (response) => {
           if (!response.ok) {
@@ -45,14 +46,23 @@ export function PortfolioDashboard({
           return response.json() as Promise<Snapshot>;
         })
         .then((data) => {
+          if (cancelled) return;
           setSnapshot(data);
           setError(formError || data.quotesError);
           setLive(true);
         })
-        .catch(() => setLive(false));
-    }, pollIntervalMs(snapshot.market.state));
-    return () => window.clearInterval(id);
-  }, [formError, snapshot.market.state]);
+        .catch(() => {
+          if (!cancelled) setLive(false);
+        });
+    };
+    const start = window.setTimeout(load, 0);
+    const id = window.setInterval(load, QUOTE_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(start);
+      window.clearInterval(id);
+    };
+  }, [formError]);
 
   const totals = snapshot.totals;
   const market = snapshot.market;
@@ -64,7 +74,11 @@ export function PortfolioDashboard({
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">US Equities</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">美股持仓看板</h1>
-          <p className="mt-1 text-sm text-muted-foreground">实时报价 · 红涨绿跌 · 总市值跟着仓位走</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {market.state === "open" || market.state === "pre" || market.state === "post"
+              ? "报价每 3 秒刷新 · 红涨绿跌 · 总市值跟着仓位走"
+              : "美股已收盘，显示最新价；开盘后会连续跳动"}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <Badge variant="outline" className="gap-1.5 font-normal">
@@ -84,9 +98,7 @@ export function PortfolioDashboard({
               {market.label}
             </Badge>
           )}
-          <span className="font-mono text-xs text-muted-foreground">
-            纽约 {market.nyTime} · 刷新 {formatNyClock(snapshot.fetchedAt)}
-          </span>
+          <LiveClock fetchedAt={snapshot.fetchedAt} />
         </div>
       </header>
 
