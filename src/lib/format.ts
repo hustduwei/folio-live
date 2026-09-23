@@ -65,6 +65,18 @@ const usdWhole = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
+const cnyWhole = new Intl.NumberFormat("zh-CN", {
+  style: "currency",
+  currency: "CNY",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+export function formatCnyWhole(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  return cnyWhole.format(Math.round(value));
+}
+
 export function formatUsdWhole(value: number): string {
   if (!Number.isFinite(value)) return "—";
   return usdWhole.format(Math.round(value));

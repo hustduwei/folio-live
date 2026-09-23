@@ -3,6 +3,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import seed from "../../data/portfolio.json";
 import type {
+  CapitalEvent,
+  CapitalSummary,
   Holding,
   PortfolioFile,
   PortfolioTotals,
@@ -26,7 +28,7 @@ function withLock<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-const emptyPortfolio = (): PortfolioFile => ({ version: 1, cash: 0, trades: [] });
+const emptyPortfolio = (): PortfolioFile => ({ version: 1, cash: 0, capital: [], trades: [] });
 
 function normalizeCash(value: unknown): number {
   const cash = typeof value === "number" ? value : Number(value);
@@ -34,17 +36,51 @@ function normalizeCash(value: unknown): number {
   return Math.round(cash * 100) / 100;
 }
 
+function money2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+export function normalizeCapital(events: unknown): CapitalEvent[] {
+  if (!Array.isArray(events)) return [];
+  const next: CapitalEvent[] = [];
+  for (const item of events) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Partial<CapitalEvent>;
+    const kind = row.kind === "withdraw" ? "withdraw" : row.kind === "deposit" ? "deposit" : null;
+    const cny = Number(row.cny);
+    const fx = Number(row.fx);
+    if (!kind || !Number.isFinite(cny) || cny <= 0 || !Number.isFinite(fx) || fx <= 0) continue;
+    const usd = Number.isFinite(Number(row.usd)) && Number(row.usd) > 0 ? money2(Number(row.usd)) : money2(cny / fx);
+    next.push({
+      id: String(row.id || `cap-${next.length + 1}`),
+      kind,
+      cny: money2(cny),
+      fx,
+      usd,
+      note: row.note?.trim() || undefined,
+      executedAt: row.executedAt || new Date().toISOString(),
+    });
+  }
+  return next;
+}
+
 export async function readPortfolio(): Promise<PortfolioFile> {
   try {
     const raw = await readFile(DATA_FILE, "utf8");
     const parsed = JSON.parse(raw) as PortfolioFile;
     if (!parsed || !Array.isArray(parsed.trades)) return emptyPortfolio();
-    return { version: 1, cash: normalizeCash(parsed.cash), trades: parsed.trades };
+    return {
+      version: 1,
+      cash: normalizeCash(parsed.cash),
+      capital: normalizeCapital(parsed.capital),
+      trades: parsed.trades,
+    };
   } catch {
     if (Array.isArray(seed.trades)) {
       return {
         version: 1,
         cash: normalizeCash((seed as PortfolioFile).cash),
+        capital: normalizeCapital((seed as PortfolioFile).capital),
         trades: seed.trades as PortfolioFile["trades"],
       };
     }
@@ -157,6 +193,27 @@ export function summarize(holdings: Holding[], cash = 0): PortfolioTotals {
   };
 }
 
+export function summarizeCapital(events: CapitalEvent[], netValue: number): CapitalSummary {
+  const principalCny = events.filter((row) => row.kind === "deposit").reduce((sum, row) => sum + row.cny, 0);
+  const principalUsd = events.filter((row) => row.kind === "deposit").reduce((sum, row) => sum + row.usd, 0);
+  const withdrawnCny = events.filter((row) => row.kind === "withdraw").reduce((sum, row) => sum + row.cny, 0);
+  const withdrawnUsd = events.filter((row) => row.kind === "withdraw").reduce((sum, row) => sum + row.usd, 0);
+  const netCapitalUsd = money2(principalUsd - withdrawnUsd);
+  const vsCapital = money2(netValue - netCapitalUsd);
+  return {
+    events: [...events].sort(
+      (a, b) => new Date(a.executedAt).getTime() - new Date(b.executedAt).getTime(),
+    ),
+    principalCny: money2(principalCny),
+    principalUsd: money2(principalUsd),
+    withdrawnCny: money2(withdrawnCny),
+    withdrawnUsd: money2(withdrawnUsd),
+    netCapitalUsd,
+    vsCapital,
+    vsCapitalPercent: netCapitalUsd > 0 ? (vsCapital / netCapitalUsd) * 100 : 0,
+  };
+}
+
 export async function setCash(amount: number): Promise<number> {
   const cash = normalizeCash(amount);
   if (!Number.isFinite(amount) || amount < 0) {
@@ -234,6 +291,11 @@ export async function removeTrade(id: string): Promise<void> {
     if (negative) {
       throw new Error("删除后持仓会变成负数，先处理后续卖出记录");
     }
-    await writePortfolio({ version: 1, cash: portfolio.cash, trades: next });
+    await writePortfolio({
+      version: 1,
+      cash: portfolio.cash,
+      capital: portfolio.capital,
+      trades: next,
+    });
   });
 }

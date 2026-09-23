@@ -1,6 +1,26 @@
 {
   "version": 1,
   "cash": 3578.32,
+  "capital": [
+    {
+      "id": "cap-principal",
+      "kind": "deposit",
+      "cny": 251201,
+      "fx": 7.1,
+      "usd": 35380.42,
+      "note": "账户原始资本",
+      "executedAt": "2026-03-01T00:00:00.000Z"
+    },
+    {
+      "id": "cap-gold-baby",
+      "kind": "withdraw",
+      "cny": 14658,
+      "fx": 7.0,
+      "usd": 2094,
+      "note": "给宝宝买金饰品",
+      "executedAt": "2026-06-20T00:00:00.000Z"
+    }
+  ],
   "trades": [
     {
       "id": "pos-crcl",

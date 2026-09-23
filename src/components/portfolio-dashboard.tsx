@@ -12,6 +12,7 @@ import { TradeForm } from "@/components/trade-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  formatCnyWhole,
   formatPercent,
   formatShares,
   formatSignedUsdWhole,
@@ -69,6 +70,7 @@ export function PortfolioDashboard({
   const sectors = snapshot.sectors ?? [];
   const stockSectors = sectors.filter((sector) => sector.key !== "cash");
   const cash = totals.cash ?? 0;
+  const capital = snapshot.capital;
 
   return (
     <div className="sheet mx-auto w-full max-w-[1180px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -139,10 +141,13 @@ export function PortfolioDashboard({
             </FlashValue>
           }
           hint={
-            snapshot.holdings.length > 0
-              ? `股票 ${formatUsd(totals.marketValue)}`
-              : "等待第一笔买入"
+            capital?.netCapitalUsd
+              ? `相对本金 ${formatSignedUsdWhole(capital.vsCapital)} · ${formatPercent(capital.vsCapitalPercent)}`
+              : snapshot.holdings.length > 0
+                ? `股票 ${formatUsd(totals.marketValue)}`
+                : "等待第一笔买入"
           }
+          tone={capital?.netCapitalUsd ? capital.vsCapital : undefined}
         />
         <StatTile
           label="今日"
@@ -195,6 +200,68 @@ export function PortfolioDashboard({
           }
         />
       </section>
+
+      {capital && capital.principalUsd > 0 ? (
+        <>
+          <SectionTitle title="资金" tag="Capital" hint="入金和提现按当时人民币汇率折成美元" />
+          <section className="mb-3.5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+            <StatTile
+              label="原始本金"
+              en="In"
+              color="#0369A1"
+              delay={0.1}
+              value={
+                <span className="font-stat text-[clamp(22px,2.6vw,34px)] font-bold leading-none">
+                  {formatUsdWhole(capital.principalUsd)}
+                </span>
+              }
+              hint={`${formatCnyWhole(capital.principalCny)} · 汇率 7.1`}
+            />
+            <StatTile
+              label="提现"
+              en="Out"
+              color="#B45309"
+              delay={0.14}
+              value={
+                <span className="font-stat text-[clamp(22px,2.6vw,34px)] font-bold leading-none">
+                  {formatUsdWhole(capital.withdrawnUsd)}
+                </span>
+              }
+              hint={`${formatCnyWhole(capital.withdrawnCny)} · 金饰品 · 汇率 7.0`}
+            />
+            <StatTile
+              label="净投入"
+              en="Basis"
+              color="#5B6478"
+              delay={0.18}
+              value={
+                <span className="font-stat text-[clamp(22px,2.6vw,34px)] font-bold leading-none">
+                  {formatUsdWhole(capital.netCapitalUsd)}
+                </span>
+              }
+              hint="入金 − 提现"
+            />
+            <StatTile
+              label="相对本金"
+              en="vs In"
+              color="#C41414"
+              delay={0.22}
+              value={
+                <AnimatedNumber
+                  value={capital.vsCapital}
+                  format={formatSignedUsdWhole}
+                  className={cn(
+                    "font-stat text-[clamp(22px,2.6vw,34px)] font-bold leading-none",
+                    signedClass(capital.vsCapital),
+                  )}
+                />
+              }
+              hint={formatPercent(capital.vsCapitalPercent)}
+              tone={capital.vsCapital}
+            />
+          </section>
+        </>
+      ) : null}
 
       <SectionTitle title="持仓地图" tag="Map" hint="方块面积 = 仓位占比" />
       <div className="card-rise mapwrap rounded-[20px] border border-black/10 bg-white p-3.5">

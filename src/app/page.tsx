@@ -13,6 +13,16 @@ const emptySnapshot = (): Snapshot => ({
   sectors: [],
   watchlist: [],
   trades: [],
+  capital: {
+    events: [],
+    principalCny: 0,
+    principalUsd: 0,
+    withdrawnCny: 0,
+    withdrawnUsd: 0,
+    netCapitalUsd: 0,
+    vsCapital: 0,
+    vsCapitalPercent: 0,
+  },
   totals: {
     marketValue: 0,
     cost: 0,

@@ -11,10 +11,34 @@ export type Trade = {
   note?: string;
 };
 
+export type CapitalKind = "deposit" | "withdraw";
+
+export type CapitalEvent = {
+  id: string;
+  kind: CapitalKind;
+  cny: number;
+  fx: number;
+  usd: number;
+  note?: string;
+  executedAt: string;
+};
+
 export type PortfolioFile = {
   version: 1;
   cash: number;
+  capital: CapitalEvent[];
   trades: Trade[];
+};
+
+export type CapitalSummary = {
+  events: CapitalEvent[];
+  principalCny: number;
+  principalUsd: number;
+  withdrawnCny: number;
+  withdrawnUsd: number;
+  netCapitalUsd: number;
+  vsCapital: number;
+  vsCapitalPercent: number;
 };
 
 export type Quote = {
@@ -111,6 +135,7 @@ export type Snapshot = {
   sectors: SectorGroup[];
   watchlist: Quote[];
   trades: Trade[];
+  capital: CapitalSummary;
   totals: PortfolioTotals;
 };
 
