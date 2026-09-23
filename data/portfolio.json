@@ -1,6 +1,11 @@
 {
   "version": 1,
   "cash": 3578.32,
+  "yearStart": {
+    "date": "2026-01-01",
+    "usd": 52418,
+    "note": "2026年1月1日账户净值"
+  },
   "capital": [
     {
       "id": "cap-principal",
@@ -9,7 +14,7 @@
       "fx": 7.1,
       "usd": 35380.42,
       "note": "账户原始资本",
-      "executedAt": "2026-03-01T00:00:00.000Z",
+      "executedAt": "2025-01-01T00:00:00.000Z",
       "affectsCash": false
     },
     {

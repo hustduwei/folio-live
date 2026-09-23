@@ -24,10 +24,26 @@ export type CapitalEvent = {
   affectsCash?: boolean;
 };
 
+export type YearMark = {
+  date: string;
+  usd: number;
+  note?: string;
+};
+
+export type YearSummary = {
+  date: string;
+  startUsd: number;
+  deposits: number;
+  withdrawals: number;
+  ytdPnl: number;
+  ytdPercent: number;
+};
+
 export type PortfolioFile = {
   version: 1;
   cash: number;
   capital: CapitalEvent[];
+  yearStart: YearMark | null;
   trades: Trade[];
 };
 
@@ -137,6 +153,7 @@ export type Snapshot = {
   watchlist: Quote[];
   trades: Trade[];
   capital: CapitalSummary;
+  year: YearSummary | null;
   totals: PortfolioTotals;
 };
 

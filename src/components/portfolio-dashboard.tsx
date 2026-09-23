@@ -72,6 +72,7 @@ export function PortfolioDashboard({
   const stockSectors = sectors.filter((sector) => sector.key !== "cash");
   const cash = totals.cash ?? 0;
   const capital = snapshot.capital;
+  const year = snapshot.year;
 
   return (
     <div className="sheet mx-auto w-full max-w-[1180px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -107,6 +108,12 @@ export function PortfolioDashboard({
           <p className="mt-2.5 text-sm tracking-[0.02em] text-muted-foreground">
             按板块分类的仓位占比 · <b className="text-foreground">{snapshot.holdings.length}</b> 个标的 ·{" "}
             <b className="text-foreground">{stockSectors.length}</b> 大板块
+            {year ? (
+              <>
+                {" "}
+                · 今年 <b className={signedClass(year.ytdPnl)}>{formatPercent(year.ytdPercent)}</b>
+              </>
+            ) : null}
             {cash > 0 ? (
               <>
                 {" "}
@@ -166,19 +173,33 @@ export function PortfolioDashboard({
           tone={totals.dayPnl}
         />
         <StatTile
-          label="累计"
-          en="P&L"
+          label="今年"
+          en="YTD"
           color="#C41414"
           delay={0.22}
           value={
-            <AnimatedNumber
-              value={totals.pnl}
-              format={formatSignedUsdWhole}
-              className={cn("font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none", signedClass(totals.pnl))}
-            />
+            year ? (
+              <AnimatedNumber
+                value={year.ytdPnl}
+                format={formatSignedUsdWhole}
+                className={cn("font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none", signedClass(year.ytdPnl))}
+              />
+            ) : (
+              <AnimatedNumber
+                value={totals.pnl}
+                format={formatSignedUsdWhole}
+                className={cn("font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none", signedClass(totals.pnl))}
+              />
+            )
           }
-          hint={`${formatPercent(totals.pnlPercent)} · 成本 ${formatUsd(totals.cost)}`}
-          tone={totals.pnl}
+          hint={
+            year
+              ? `${formatPercent(year.ytdPercent)} · 年初 ${formatUsdWhole(year.startUsd)}${
+                  year.withdrawals > 0 ? ` · 已加回提现 ${formatUsdWhole(year.withdrawals)}` : ""
+                }`
+              : `${formatPercent(totals.pnlPercent)} · 成本 ${formatUsd(totals.cost)}`
+          }
+          tone={year ? year.ytdPnl : totals.pnl}
         />
         <StatTile
           label="现金"

@@ -12,6 +12,8 @@ import type {
   Quote,
   Trade,
   TradeSide,
+  YearMark,
+  YearSummary,
 } from "./types";
 import { normalizeSymbol } from "./quotes";
 
@@ -29,7 +31,13 @@ function withLock<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-const emptyPortfolio = (): PortfolioFile => ({ version: 1, cash: 0, capital: [], trades: [] });
+const emptyPortfolio = (): PortfolioFile => ({
+  version: 1,
+  cash: 0,
+  capital: [],
+  yearStart: null,
+  trades: [],
+});
 
 function normalizeCash(value: unknown): number {
   const cash = typeof value === "number" ? value : Number(value);
@@ -66,6 +74,15 @@ export function normalizeCapital(events: unknown): CapitalEvent[] {
   return next;
 }
 
+export function normalizeYearStart(value: unknown): YearMark | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Partial<YearMark>;
+  const usd = Number(row.usd);
+  const date = String(row.date || "").trim();
+  if (!date || !Number.isFinite(usd) || usd <= 0) return null;
+  return { date, usd: money2(usd), note: row.note?.trim() || undefined };
+}
+
 export async function readPortfolio(): Promise<PortfolioFile> {
   try {
     const raw = await readFile(DATA_FILE, "utf8");
@@ -75,6 +92,7 @@ export async function readPortfolio(): Promise<PortfolioFile> {
       version: 1,
       cash: normalizeCash(parsed.cash),
       capital: normalizeCapital(parsed.capital),
+      yearStart: normalizeYearStart(parsed.yearStart),
       trades: parsed.trades,
     };
   } catch {
@@ -83,6 +101,7 @@ export async function readPortfolio(): Promise<PortfolioFile> {
         version: 1,
         cash: normalizeCash((seed as PortfolioFile).cash),
         capital: normalizeCapital((seed as PortfolioFile).capital),
+        yearStart: normalizeYearStart((seed as PortfolioFile).yearStart),
         trades: seed.trades as PortfolioFile["trades"],
       };
     }
@@ -213,6 +232,35 @@ export function summarizeCapital(events: CapitalEvent[], netValue: number): Capi
     netCapitalUsd,
     vsCapital,
     vsCapitalPercent: netCapitalUsd > 0 ? (vsCapital / netCapitalUsd) * 100 : 0,
+  };
+}
+
+export function summarizeYear(
+  netValue: number,
+  yearStart: YearMark | null,
+  events: CapitalEvent[],
+): YearSummary | null {
+  if (!yearStart) return null;
+  const startAt = Date.parse(`${yearStart.date}T00:00:00.000Z`);
+  if (!Number.isFinite(startAt)) return null;
+
+  let deposits = 0;
+  let withdrawals = 0;
+  for (const event of events) {
+    const at = Date.parse(event.executedAt);
+    if (!Number.isFinite(at) || at < startAt) continue;
+    if (event.kind === "deposit") deposits += event.usd;
+    else withdrawals += event.usd;
+  }
+
+  const ytdPnl = money2(netValue - yearStart.usd - deposits + withdrawals);
+  return {
+    date: yearStart.date,
+    startUsd: yearStart.usd,
+    deposits: money2(deposits),
+    withdrawals: money2(withdrawals),
+    ytdPnl,
+    ytdPercent: yearStart.usd > 0 ? (ytdPnl / yearStart.usd) * 100 : 0,
   };
 }
 
@@ -354,6 +402,7 @@ export async function removeTrade(id: string): Promise<void> {
       version: 1,
       cash: portfolio.cash,
       capital: portfolio.capital,
+      yearStart: portfolio.yearStart,
       trades: next,
     });
   });

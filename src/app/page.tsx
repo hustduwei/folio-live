@@ -23,6 +23,7 @@ const emptySnapshot = (): Snapshot => ({
     vsCapital: 0,
     vsCapitalPercent: 0,
   },
+  year: null,
   totals: {
     marketValue: 0,
     cost: 0,

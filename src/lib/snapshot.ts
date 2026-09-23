@@ -1,6 +1,6 @@
 import { WATCHLIST } from "./aliases";
 import { getMarketClock } from "./market";
-import { deriveHoldings, readPortfolio, summarize, summarizeCapital } from "./portfolio";
+import { deriveHoldings, readPortfolio, summarize, summarizeCapital, summarizeYear } from "./portfolio";
 import { fetchQuotes, normalizeSymbol } from "./quotes";
 import { attachCashSector, groupBySector } from "./sectors";
 import type { Snapshot } from "./types";
@@ -51,6 +51,7 @@ async function assemble(maxWaitMs?: number): Promise<Snapshot> {
       (a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),
     ),
     capital: summarizeCapital(portfolio.capital, totals.netValue),
+    year: summarizeYear(totals.netValue, portfolio.yearStart, portfolio.capital),
     totals,
   };
   lastGood = snapshot;
