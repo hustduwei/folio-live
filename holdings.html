@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>持仓全景图</title>
+<style>
+  :root { --up:#dc2626; --down:#16a34a; --ink:#1a1f36; --muted:#6b7280; }
+  * { box-sizing:border-box; }
+  body { margin:0; color:var(--ink); font-family:"PingFang SC","Noto Sans SC","Segoe UI",sans-serif;
+    background:#f7f8fc; background-image:linear-gradient(rgba(0,0,0,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.035) 1px,transparent 1px); background-size:42px 42px; }
+  main { max-width:1180px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { margin:8px 0 6px; font-size:clamp(34px,5vw,56px); letter-spacing:-.02em; }
+  .sub { color:var(--muted); font-size:14px; }
+  .note { margin:14px 0 0; padding:10px 12px; border:1px dashed rgba(0,0,0,.15); border-radius:12px; color:var(--muted); font-size:13px; background:#fff; }
+  .tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:22px 0; }
+  .tiles article { position:relative; background:#fff; border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:16px 16px 14px 18px; overflow:hidden; }
+  .tiles i { position:absolute; left:0; top:0; bottom:0; width:3px; }
+  .tiles p { margin:0; color:var(--muted); font-size:14px; }
+  .tiles em { font-style:normal; font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.12em; }
+  .tiles b { display:block; margin-top:6px; font-family:ui-monospace,"Arial Narrow",Impact,sans-serif; font-size:clamp(26px,3vw,38px); letter-spacing:.03em; font-weight:800; }
+  .tiles small, .up { }
+  .up { color:var(--up); } .down { color:var(--down); } .flat { color:var(--muted); }
+  .tiles small { display:block; margin-top:4px; color:var(--muted); font-family:ui-monospace,monospace; font-size:11px; }
+  h2 { margin:28px 0 12px; font-size:21px; }
+  h2 span { margin-left:8px; color:var(--muted); font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.2em; }
+  .map { background:#fff; border:1px solid rgba(0,0,0,.1); border-radius:20px; padding:12px; }
+  .map svg { width:100%; height:auto; display:block; }
+  .bar { display:flex; height:44px; border-radius:12px; overflow:hidden; border:1px solid rgba(0,0,0,.1); color:#fff; font-size:12px; font-weight:700; }
+  .bar div { display:flex; align-items:center; justify-content:center; min-width:2px; white-space:nowrap; overflow:hidden; }
+  .legend { display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:10px; font-size:13px; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; }
+  .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .card { background:#fff; border:1px solid rgba(0,0,0,.1); border-radius:18px; padding:14px 16px 10px; border-top:4px solid var(--c); }
+  .card header { display:flex; gap:10px; align-items:flex-start; }
+  .ico { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; background:color-mix(in srgb,var(--c) 16%,white); }
+  .card h3 { margin:0; font-size:18px; }
+  .card header p { margin:2px 0 0; color:var(--muted); font-size:11px; letter-spacing:.12em; text-transform:uppercase; }
+  .wt { margin-left:auto; text-align:right; color:var(--c); }
+  .wt b { font-size:24px; }
+  .wt small { display:block; color:var(--muted); }
+  .row { display:flex; gap:8px; align-items:center; padding:7px 0; font-size:13px; }
+  .row span { flex:1; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .table-wrap { overflow:auto; background:#fff; border:1px solid rgba(0,0,0,.1); border-radius:18px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.06); text-align:left; vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; }
+  td small, th small { display:block; color:var(--muted); font-weight:400; }
+  .num { text-align:right; font-family:ui-monospace,monospace; }
+  .cap { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .cap article { background:#fff; border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; }
+  .cap b { display:block; margin-top:6px; font-size:26px; font-family:ui-monospace,monospace; }
+  ul.ledger { list-style:none; padding:0; margin:0; background:#fff; border:1px solid rgba(0,0,0,.1); border-radius:18px; }
+  ul.ledger li { padding:12px 14px; border-bottom:1px solid rgba(0,0,0,.06); }
+  ul.ledger .deposit { color:#0369A1; } ul.ledger .withdraw { color:#B45309; }
+  footer { margin-top:28px; color:var(--muted); font-size:12px; }
+  @media (max-width:900px) { .tiles,.cap,.cards { grid-template-columns:1fr 1fr; } }
+  @media (max-width:640px) { .tiles,.cap,.cards { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="sub">美股持仓 · 快照 2026-09-23 21:16 · 盘前 · 红涨绿跌</div>
+  <h1>持仓全景图</h1>
+  <p class="sub">13 个标的 · 今年 +22.22% · 账户 +86.18% · 现金 $3,578.32</p>
+  <p class="note">这是一份可以双击打开的网页快照，报价停在 2026-09-23 21:16。它不会自己刷新。要最新数字，再跟我说一声，我重新生成这一份。</p>
+  
+<section class="tiles">
+  <article><i style="background:#0369A1"></i><p>净资产 <em>NET</em></p><b>$61,971</b><small>股票 $58,393</small></article>
+  <article><i style="background:#EA580C"></i><p>今日 <em>DAY</em></p><b class="up">+$378</b><small class="up">+0.65%</small></article>
+  <article><i style="background:#C41414"></i><p>今年收益率 <em>YTD</em></p><b class="up">+22.22%</b><small>+$11,647 · 年初 $52,418</small></article>
+  <article><i style="background:#5B6478"></i><p>现金 <em>CASH</em></p><b>$3,578</b><small>占总资产 5.8%</small></article>
+</section>
+  <h2>持仓地图 <span>MAP</span></h2>
+  <div class="map"><svg viewBox="0 0 1000 560" role="img" aria-label="持仓地图"><g><title>RKLB Rocket Lab Corporation 17.5%</title><rect x="11.0" y="11.0" width="978.0" height="89.1" rx="10" fill="#C41414"/><text x="500.0" y="59.5" text-anchor="middle" fill="white" font-size="20" font-weight="800">RKLB</text></g><g><title>SPCX Space Exploration Technologies  5.9%</title><rect x="11.0" y="106.1" width="978.0" height="26.3" rx="10" fill="#2C2C2C"/><text x="500.0" y="123.2" text-anchor="middle" fill="white" font-size="12" font-weight="800">SPCX</text></g><g><title>VSAT ViaSat, Inc. 3.0%</title><rect x="11.0" y="138.4" width="978.0" height="10.2" rx="10" fill="#0F4C81"/><text x="500.0" y="147.5" text-anchor="middle" fill="white" font-size="12" font-weight="800">VSAT</text></g><g><title>CRCL Circle Internet Group, Inc. 20.0%</title><rect x="11.0" y="154.6" width="978.0" height="102.6" rx="10" fill="#3DCFCF"/><text x="500.0" y="209.9" text-anchor="middle" fill="white" font-size="23" font-weight="800">CRCL</text></g><g><title>MSTR Strategy Inc 4.0%</title><rect x="11.0" y="263.2" width="978.0" height="15.8" rx="10" fill="#DC5C14"/><text x="500.0" y="275.1" text-anchor="middle" fill="white" font-size="12" font-weight="800">MSTR</text></g><g><title>HIMS Hims &amp; Hers Health, Inc. 10.4%</title><rect x="11.0" y="285.0" width="978.0" height="50.4" rx="10" fill="#2C2420"/><text x="500.0" y="314.2" text-anchor="middle" fill="white" font-size="12" font-weight="800">HIMS</text></g><g><title>TSLA Tesla, Inc. 9.2%</title><rect x="11.0" y="352.7" width="978.0" height="43.8" rx="10" fill="#CC0000"/><text x="500.0" y="378.6" text-anchor="middle" fill="white" font-size="12" font-weight="800">TSLA</text></g><g><title>NVDA NVIDIA Corporation 7.3%</title><rect x="11.0" y="402.5" width="978.0" height="34.0" rx="10" fill="#76B900"/><text x="500.0" y="423.5" text-anchor="middle" fill="white" font-size="12" font-weight="800">NVDA</text></g><g><title>LITE Lumentum Holdings Inc. 7.6%</title><rect x="11.0" y="450.6" width="978.0" height="35.6" rx="10" fill="#7C3AED"/><text x="500.0" y="472.4" text-anchor="middle" fill="white" font-size="12" font-weight="800">LITE</text></g><g><title>现金 美元 5.8%</title><rect x="11.0" y="492.2" width="978.0" height="25.4" rx="10" fill="#8A94B0"/><text x="500.0" y="508.9" text-anchor="middle" fill="white" font-size="12" font-weight="800">现金</text></g><g><title>SMR NuScale Power Corporation 3.2%</title><rect x="11.0" y="523.6" width="978.0" height="11.3" rx="10" fill="#CA8A04"/><text x="500.0" y="533.2" text-anchor="middle" fill="white" font-size="12" font-weight="800">SMR</text></g><g><title>OKLO Oklo Inc. 2.6%</title><rect x="11.0" y="540.9" width="978.0" height="8.1" rx="10" fill="#B45309"/><text x="500.0" y="548.9" text-anchor="middle" fill="white" font-size="12" font-weight="800">OKLO</text></g></svg></div>
+  <h2>板块配置 <span>ALLOCATION</span></h2>
+  <div class="bar"><div style="flex:26.402427017469087;background:#B91C1C" title="太空">太空 26.4%</div><div style="flex:23.968971091506113;background:#DC5C14" title="加密货币">加密货币 24.0%</div><div style="flex:12.443713727101505;background:#2C2420" title="医疗">医疗 12.4%</div><div style="flex:9.150910990818648;background:#EA580C" title="消费">消费 9.2%</div><div style="flex:8.840711301997823;background:#3B5CE6" title="科技 / AI">科技 / AI 8.8%</div><div style="flex:7.649903372316873;background:#7C3AED" title="光通讯">光通讯 7.6%</div><div style="flex:5.774150131356624;background:#8A94B0" title="现金">现金 5.8%</div><div style="flex:5.769212367433344;background:#CA8A04" title="能源">能源 5.8%</div></div>
+  <div class="legend"><span><i style="background:#B91C1C"></i>太空 <b>26.4%</b></span><span><i style="background:#DC5C14"></i>加密货币 <b>24.0%</b></span><span><i style="background:#2C2420"></i>医疗 <b>12.4%</b></span><span><i style="background:#EA580C"></i>消费 <b>9.2%</b></span><span><i style="background:#3B5CE6"></i>科技 / AI <b>8.8%</b></span><span><i style="background:#7C3AED"></i>光通讯 <b>7.6%</b></span><span><i style="background:#8A94B0"></i>现金 <b>5.8%</b></span><span><i style="background:#CA8A04"></i>能源 <b>5.8%</b></span></div>
+  <h2>板块明细 <span>SECTORS</span></h2>
+  <div class="cards"><article class="card" style="--c:#B91C1C">
+      <header><div class="ico">✦</div><div><h3>太空</h3><p>Space</p></div><div class="wt"><b>26.4%</b><small>$16,362</small></div></header>
+      <div class="row"><b>RKLB</b><span>Rocket Lab Corporation</span><em class="up">+3.98%</em><strong>17.5%</strong></div><div class="row"><b>SPCX</b><span>Space Exploration Technologies </span><em class="up">+1.07%</em><strong>5.9%</strong></div><div class="row"><b>VSAT</b><span>ViaSat, Inc.</span><em class="down">-3.12%</em><strong>3.0%</strong></div>
+    </article><article class="card" style="--c:#DC5C14">
+      <header><div class="ico">₿</div><div><h3>加密货币</h3><p>Crypto</p></div><div class="wt"><b>24.0%</b><small>$14,854</small></div></header>
+      <div class="row"><b>CRCL</b><span>Circle Internet Group, Inc.</span><em class="down">-1.58%</em><strong>20.0%</strong></div><div class="row"><b>MSTR</b><span>Strategy Inc</span><em class="down">-1.69%</em><strong>4.0%</strong></div>
+    </article><article class="card" style="--c:#2C2420">
+      <header><div class="ico">➕</div><div><h3>医疗</h3><p>Healthcare</p></div><div class="wt"><b>12.4%</b><small>$7,712</small></div></header>
+      <div class="row"><b>HIMS</b><span>Hims &amp; Hers Health, Inc.</span><em class="up">+2.83%</em><strong>10.4%</strong></div><div class="row"><b>RXRX</b><span>Recursion Pharmaceuticals, Inc.</span><em class="up">+1.01%</em><strong>2.1%</strong></div>
+    </article><article class="card" style="--c:#EA580C">
+      <header><div class="ico">🛒</div><div><h3>消费</h3><p>Consumer</p></div><div class="wt"><b>9.2%</b><small>$5,671</small></div></header>
+      <div class="row"><b>TSLA</b><span>Tesla, Inc.</span><em class="up">+0.76%</em><strong>9.2%</strong></div>
+    </article><article class="card" style="--c:#3B5CE6">
+      <header><div class="ico">⚙</div><div><h3>科技 / AI</h3><p>Tech &amp; AI</p></div><div class="wt"><b>8.8%</b><small>$5,479</small></div></header>
+      <div class="row"><b>NVDA</b><span>NVIDIA Corporation</span><em class="up">+0.08%</em><strong>7.3%</strong></div><div class="row"><b>PLTR</b><span>Palantir Technologies Inc.</span><em class="up">+1.31%</em><strong>1.5%</strong></div>
+    </article><article class="card" style="--c:#7C3AED">
+      <header><div class="ico">◎</div><div><h3>光通讯</h3><p>Optical</p></div><div class="wt"><b>7.6%</b><small>$4,741</small></div></header>
+      <div class="row"><b>LITE</b><span>Lumentum Holdings Inc.</span><em class="down">-0.66%</em><strong>7.6%</strong></div>
+    </article><article class="card" style="--c:#8A94B0">
+      <header><div class="ico">$</div><div><h3>现金</h3><p>Cash</p></div><div class="wt"><b>5.8%</b><small>$3,578</small></div></header>
+      <div class="row"><b>现金</b><span>美元</span><em class="flat">0.00%</em><strong>5.8%</strong></div>
+    </article><article class="card" style="--c:#CA8A04">
+      <header><div class="ico">⛽</div><div><h3>能源</h3><p>Energy</p></div><div class="wt"><b>5.8%</b><small>$3,575</small></div></header>
+      <div class="row"><b>SMR</b><span>NuScale Power Corporation</span><em class="up">+0.34%</em><strong>3.2%</strong></div><div class="row"><b>OKLO</b><span>Oklo Inc.</span><em class="up">+0.07%</em><strong>2.6%</strong></div>
+    </article></div>
+  <h2>持仓明细 <span>HOLDINGS</span></h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>标的</th><th class="num">现价</th><th class="num">持股</th><th class="num">成本</th><th class="num">市值</th><th class="num">今日</th><th class="num">累计盈亏</th></tr></thead>
+    <tbody><tr>
+      <td><b>CRCL</b><small>Circle Internet Group, Inc.</small></td>
+      <td class="num down">$93.00<small>-1.58%</small></td>
+      <td class="num">133</td>
+      <td class="num">$100.61</td>
+      <td class="num">$12,369<small>21.2%</small></td>
+      <td class="num down">-$198</td>
+      <td class="num down">-$1,011<small>-7.56%</small></td>
+    </tr><tr>
+      <td><b>RKLB</b><small>Rocket Lab Corporation</small></td>
+      <td class="num up">$72.67<small>+3.98%</small></td>
+      <td class="num">149</td>
+      <td class="num">$62.45</td>
+      <td class="num">$10,828<small>18.5%</small></td>
+      <td class="num up">+$415</td>
+      <td class="num up">+$1,523<small>+16.37%</small></td>
+    </tr><tr>
+      <td><b>HIMS</b><small>Hims &amp; Hers Health, Inc.</small></td>
+      <td class="num up">$30.18<small>+2.83%</small></td>
+      <td class="num">213</td>
+      <td class="num">$34.59</td>
+      <td class="num">$6,428<small>11.0%</small></td>
+      <td class="num up">+$177</td>
+      <td class="num down">-$940<small>-12.76%</small></td>
+    </tr><tr>
+      <td><b>TSLA</b><small>Tesla, Inc.</small></td>
+      <td class="num up">$378.06<small>+0.76%</small></td>
+      <td class="num">15</td>
+      <td class="num">$296.83</td>
+      <td class="num">$5,671<small>9.7%</small></td>
+      <td class="num up">+$43</td>
+      <td class="num up">+$1,219<small>+27.37%</small></td>
+    </tr><tr>
+      <td><b>LITE</b><small>Lumentum Holdings Inc.</small></td>
+      <td class="num down">$948.15<small>-0.66%</small></td>
+      <td class="num">5</td>
+      <td class="num">$896.80</td>
+      <td class="num">$4,741<small>8.1%</small></td>
+      <td class="num down">-$32</td>
+      <td class="num up">+$257<small>+5.73%</small></td>
+    </tr><tr>
+      <td><b>NVDA</b><small>NVIDIA Corporation</small></td>
+      <td class="num up">$227.57<small>+0.08%</small></td>
+      <td class="num">20</td>
+      <td class="num">$208.59</td>
+      <td class="num">$4,551<small>7.8%</small></td>
+      <td class="num up">+$4</td>
+      <td class="num up">+$380<small>+9.10%</small></td>
+    </tr><tr>
+      <td><b>SPCX</b><small>Space Exploration Technologies </small></td>
+      <td class="num up">$153.48<small>+1.07%</small></td>
+      <td class="num">24</td>
+      <td class="num">$136.96</td>
+      <td class="num">$3,684<small>6.3%</small></td>
+      <td class="num up">+$39</td>
+      <td class="num up">+$397<small>+12.06%</small></td>
+    </tr><tr>
+      <td><b>MSTR</b><small>Strategy Inc</small></td>
+      <td class="num down">$165.66<small>-1.69%</small></td>
+      <td class="num">15</td>
+      <td class="num">$242.45</td>
+      <td class="num">$2,485<small>4.3%</small></td>
+      <td class="num down">-$43</td>
+      <td class="num down">-$1,152<small>-31.67%</small></td>
+    </tr><tr>
+      <td><b>SMR</b><small>NuScale Power Corporation</small></td>
+      <td class="num up">$8.82<small>+0.34%</small></td>
+      <td class="num">223</td>
+      <td class="num">$14.62</td>
+      <td class="num">$1,967<small>3.4%</small></td>
+      <td class="num up">+$7</td>
+      <td class="num down">-$1,294<small>-39.68%</small></td>
+    </tr><tr>
+      <td><b>VSAT</b><small>ViaSat, Inc.</small></td>
+      <td class="num down">$74.00<small>-3.12%</small></td>
+      <td class="num">25</td>
+      <td class="num">$66.14</td>
+      <td class="num">$1,850<small>3.2%</small></td>
+      <td class="num down">-$59</td>
+      <td class="num up">+$196<small>+11.88%</small></td>
+    </tr><tr>
+      <td><b>OKLO</b><small>Oklo Inc.</small></td>
+      <td class="num up">$40.21<small>+0.07%</small></td>
+      <td class="num">40</td>
+      <td class="num">$74.75</td>
+      <td class="num">$1,608<small>2.8%</small></td>
+      <td class="num up">+$1</td>
+      <td class="num down">-$1,382<small>-46.21%</small></td>
+    </tr><tr>
+      <td><b>RXRX</b><small>Recursion Pharmaceuticals, Inc.</small></td>
+      <td class="num up">$4.01<small>+1.01%</small></td>
+      <td class="num">320</td>
+      <td class="num">$3.48</td>
+      <td class="num">$1,283<small>2.2%</small></td>
+      <td class="num up">+$13</td>
+      <td class="num up">+$169<small>+15.20%</small></td>
+    </tr><tr>
+      <td><b>PLTR</b><small>Palantir Technologies Inc.</small></td>
+      <td class="num up">$185.47<small>+1.31%</small></td>
+      <td class="num">5</td>
+      <td class="num">$135.58</td>
+      <td class="num">$927<small>1.6%</small></td>
+      <td class="num up">+$12</td>
+      <td class="num up">+$249<small>+36.80%</small></td>
+    </tr></tbody>
+  </table></div>
+  <h2>资金 <span>CAPITAL</span></h2>
+  <section class="cap">
+    <article><p>原始本金</p><b>$35,380</b><small>¥251,201</small></article>
+    <article><p>提现</p><b>$2,094</b><small>¥14,658 · 金饰品</small></article>
+    <article><p>净投入</p><b>$33,286</b><small>入金 − 提现</small></article>
+    <article><p>账户收益率</p><b class="up">+86.18%</b><small>+$28,685</small></article>
+  </section>
+  <h2>资金流水</h2>
+  <ul class="ledger"><li><b class="withdraw">提现</b> ¥14,658 ÷ 7 = $2,094.00 <span>给宝宝买金饰品</span></li><li><b class="deposit">入金</b> ¥251,201 ÷ 7.1 = $35,380.42 <span>账户原始资本</span></li></ul>
+  <footer>本地快照文件 · 报价来自生成那一刻的 Yahoo Finance · 红涨绿跌</footer>
+</main>
+</body>
+</html>
