@@ -4,6 +4,8 @@
 
 这不是一个可以双击打开的 HTML 文件。它是 Next.js 应用，必须先在本机启动开发服务器。
 
+打开慢，通常不是页面坏了：开发模式会先下载几兆 JS；第一次打开还要去拉雅虎行情。本机用下面的命令会快很多。
+
 之后你只要说「买入 / 卖出」即可，例如：
 
 - `买入 AAPL 10 股，成本 180`
@@ -19,10 +21,10 @@
 
 ```bash
 npm install
-npm run dev
+npm run preview
 ```
 
-然后打开 [http://localhost:43147](http://localhost:43147)。
+然后打开 [http://localhost:43147](http://localhost:43147)。`npm run preview` 是编译后的正式模式，比 `npm run dev` 轻很多。
 
 在 Cursor 的 Cloud Agent 对话里，点预览卡片即可，不用自己装。
 

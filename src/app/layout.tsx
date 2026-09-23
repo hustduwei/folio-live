@@ -6,19 +6,19 @@ import "./globals.css";
 const display = Bricolage_Grotesque({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["500", "700", "800"],
+  weight: ["700", "800"],
 });
 
 const notoSans = Noto_Sans_SC({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "700", "900"],
+  weight: ["400", "700"],
 });
 
 const jetbrains = JetBrains_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-  weight: ["500", "700"],
+  weight: ["500"],
 });
 
 export const metadata: Metadata = {

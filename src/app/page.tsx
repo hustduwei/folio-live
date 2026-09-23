@@ -31,7 +31,7 @@ export default async function Home({
   const params = await searchParams;
   let snapshot: Snapshot;
   try {
-    snapshot = await buildSnapshot();
+    snapshot = await buildSnapshot("fast");
   } catch {
     snapshot = emptySnapshot();
   }

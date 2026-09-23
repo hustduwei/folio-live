@@ -42,7 +42,7 @@ async function yahooJson<T>(url: string): Promise<T> {
       Accept: "application/json",
     },
     cache: "no-store",
-    signal: AbortSignal.timeout(8_000),
+    signal: AbortSignal.timeout(4_000),
   });
   if (!response.ok) {
     throw new Error(`行情接口 ${response.status}`);
@@ -95,17 +95,72 @@ function sparkCloses(item: YahooSparkItem): number[] {
   return closes.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
 }
 
-const QUOTE_CACHE_MS = 2_500;
+const QUOTE_CACHE_MS = 8_000;
+const QUOTE_STALE_MS = 60_000;
+const lastQuotes = new Map<string, Quote>();
 let quoteCache: { key: string; at: number; quotes: Quote[] } | null = null;
+let inflightQuotes: { key: string; promise: Promise<Quote[]> } | null = null;
 
-export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
+function remembered(symbols: string[]): Quote[] {
+  return symbols.map((symbol) => lastQuotes.get(symbol)).filter((quote): quote is Quote => Boolean(quote));
+}
+
+function remember(quotes: Quote[]) {
+  for (const quote of quotes) lastQuotes.set(quote.symbol, quote);
+}
+
+export async function fetchQuotes(
+  symbols: string[],
+  options: { maxWaitMs?: number } = {},
+): Promise<Quote[]> {
   const unique = [...new Set(symbols.map(normalizeSymbol).filter(Boolean))];
   if (unique.length === 0) return [];
   const cacheKey = unique.join(",");
-  if (quoteCache && quoteCache.key === cacheKey && Date.now() - quoteCache.at < QUOTE_CACHE_MS) {
+  const now = Date.now();
+  if (quoteCache && quoteCache.key === cacheKey && now - quoteCache.at < QUOTE_CACHE_MS) {
     return quoteCache.quotes;
   }
 
+  const stale = remembered(unique);
+  const cacheAge = quoteCache && quoteCache.key === cacheKey ? now - quoteCache.at : Infinity;
+  if (stale.length === unique.length && cacheAge < QUOTE_STALE_MS) {
+    void refreshQuotes(unique, cacheKey);
+    return stale;
+  }
+
+  const pending = refreshQuotes(unique, cacheKey);
+  if (options.maxWaitMs != null && stale.length > 0) {
+    const winner = await Promise.race([
+      pending,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), options.maxWaitMs)),
+    ]);
+    return winner ?? stale;
+  }
+
+  try {
+    return await pending;
+  } catch (error) {
+    if (stale.length > 0) return stale;
+    throw error;
+  }
+}
+
+function refreshQuotes(unique: string[], cacheKey: string): Promise<Quote[]> {
+  if (inflightQuotes?.key === cacheKey) return inflightQuotes.promise;
+  const promise = loadQuotes(unique)
+    .then((quotes) => {
+      remember(quotes);
+      quoteCache = { key: cacheKey, at: Date.now(), quotes };
+      return quotes;
+    })
+    .finally(() => {
+      if (inflightQuotes?.promise === promise) inflightQuotes = null;
+    });
+  inflightQuotes = { key: cacheKey, promise };
+  return promise;
+}
+
+async function loadQuotes(unique: string[]): Promise<Quote[]> {
   const hosts = ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"];
   const bySymbol = new Map<string, Quote>();
 
@@ -161,11 +216,9 @@ export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
     );
   }
 
-  const quotes = unique
-    .map((symbol) => bySymbol.get(symbol))
+  return unique
+    .map((symbol) => bySymbol.get(symbol) ?? lastQuotes.get(symbol))
     .filter((quote): quote is Quote => Boolean(quote));
-  quoteCache = { key: cacheKey, at: Date.now(), quotes };
-  return quotes;
 }
 
 export async function fetchWatchlistQuotes(extra: string[] = []): Promise<Quote[]> {

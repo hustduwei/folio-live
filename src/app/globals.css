@@ -122,31 +122,11 @@
 }
 
 .card-rise {
-  animation: rise 0.65s ease both;
+  animation: none;
 }
 
 .tile {
-  animation: pop 0.5s ease both;
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes pop {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  animation: none;
 }
 
 @keyframes pulse-dot {

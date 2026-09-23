@@ -57,11 +57,9 @@ export function PortfolioDashboard({
           if (!cancelled) setLive(false);
         });
     };
-    const start = window.setTimeout(load, 0);
     const id = window.setInterval(load, QUOTE_POLL_MS);
     return () => {
       cancelled = true;
-      window.clearTimeout(start);
       window.clearInterval(id);
     };
   }, [formError]);

@@ -5,36 +5,54 @@ import { fetchQuotes, normalizeSymbol } from "./quotes";
 import { groupBySector } from "./sectors";
 import type { Snapshot } from "./types";
 
-export async function buildSnapshot(): Promise<Snapshot> {
+let lastGood: Snapshot | null = null;
+let inflight: Promise<Snapshot> | null = null;
+
+export async function buildSnapshot(mode: "fast" | "fresh" = "fresh"): Promise<Snapshot> {
+  if (mode === "fast" && lastGood) {
+    void refresh();
+    return lastGood;
+  }
+  return refresh();
+}
+
+function refresh(): Promise<Snapshot> {
+  if (!inflight) {
+    inflight = assemble(lastGood ? 450 : undefined).finally(() => {
+      inflight = null;
+    });
+  }
+  return inflight;
+}
+
+async function assemble(maxWaitMs?: number): Promise<Snapshot> {
   const portfolio = await readPortfolio();
-  const heldSymbols = [
-    ...new Set(portfolio.trades.map((trade) => normalizeSymbol(trade.symbol))),
-  ];
+  const heldSymbols = [...new Set(portfolio.trades.map((trade) => normalizeSymbol(trade.symbol)))];
   const symbols = [...new Set([...heldSymbols, ...WATCHLIST])];
 
   let quotesError: string | null = null;
   let quotes: Awaited<ReturnType<typeof fetchQuotes>> = [];
   try {
-    quotes = await fetchQuotes(symbols);
+    quotes = await fetchQuotes(symbols, maxWaitMs != null ? { maxWaitMs } : undefined);
   } catch (error) {
     quotesError = error instanceof Error ? error.message : "行情暂时不可用";
   }
 
   const holdings = deriveHoldings(portfolio.trades, quotes);
-  const totals = summarize(holdings);
-  const sectors = groupBySector(holdings);
-  const watchlist = quotes.filter((quote) => WATCHLIST.includes(quote.symbol));
-
-  return {
+  const snapshot: Snapshot = {
     fetchedAt: new Date().toISOString(),
     market: getMarketClock(),
     quotesError,
     holdings,
-    sectors,
-    watchlist,
+    sectors: groupBySector(holdings),
+    watchlist: quotes.filter((quote) => WATCHLIST.includes(quote.symbol)),
     trades: [...portfolio.trades].sort(
       (a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),
     ),
-    totals,
+    totals: summarize(holdings),
   };
+  if (!quotesError || snapshot.holdings.some((row) => !row.quoteMissing)) {
+    lastGood = snapshot;
+  }
+  return snapshot;
 }
