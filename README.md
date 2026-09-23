@@ -34,6 +34,18 @@ npm run preview
 
 在 Cursor 的 Cloud Agent 对话里，点预览卡片即可，不用自己装。
 
+## 手机上看
+
+不能发一个双击打开的 `.html`：报价要联网，账本也在服务器上。手机用浏览器打开这个网址即可，也可以「添加到主屏幕」：
+
+https://temporary-racing-iodine-tgh4q6q.vercel.app
+
+这是临时发布，大约一小时后会过期。要长期用，打开下面这个认领链接，绑到你自己的 Vercel 账号：
+
+https://vercel.com/claim-deployment?code=086bcbdb-352a-4ab7-8cdb-c83e3f6ee745
+
+线上是只读看板。买入、卖出、提现继续跟我说，我会改账本再发布。
+
 ## 说明
 
 - 报价来自 Yahoo Finance，无需 API Key。盘中接近实时，盘前盘后用全日最新价。
