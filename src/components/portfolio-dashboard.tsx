@@ -200,26 +200,20 @@ export function PortfolioDashboard({
           tone={year?.ytdPnl}
         />
         <StatTile
-          label="账户收益率"
-          en="All"
-          color="#7C3AED"
+          label="现金"
+          en="Cash"
+          color="#5B6478"
           delay={0.28}
           value={
-            <AnimatedNumber
-              value={capital?.vsCapitalPercent ?? 0}
-              format={formatPercent}
-              className={cn(
-                "font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none",
-                signedClass(capital?.vsCapital ?? 0),
-              )}
-            />
+            <FlashValue value={Math.round(cash)}>
+              <AnimatedNumber
+                value={cash}
+                format={formatUsdWhole}
+                className="font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none"
+              />
+            </FlashValue>
           }
-          hint={
-            capital?.netCapitalUsd
-              ? `${formatSignedUsdWhole(capital.vsCapital)} · 净投入 ${formatUsdWhole(capital.netCapitalUsd)}`
-              : "还没有本金"
-          }
-          tone={capital?.vsCapital}
+          hint={cash > 0 ? `占总资产 ${formatWeight(totals.cashWeight ?? 0)}` : "还没有登记现金"}
         />
       </section>
 
@@ -333,16 +327,26 @@ export function PortfolioDashboard({
               hint="入金 − 提现"
             />
             <StatTile
-              label="现金"
-              en="Cash"
-              color="#5B6478"
+              label="账户收益率"
+              en="All"
+              color="#7C3AED"
               delay={0.22}
               value={
-                <span className="font-stat text-[clamp(22px,2.6vw,34px)] font-bold leading-none">
-                  {formatUsdWhole(cash)}
+                <span
+                  className={cn(
+                    "font-stat text-[clamp(22px,2.6vw,34px)] font-bold leading-none",
+                    signedClass(capital.vsCapital),
+                  )}
+                >
+                  {formatPercent(capital.vsCapitalPercent)}
                 </span>
               }
-              hint={cash > 0 ? `占总资产 ${formatWeight(totals.cashWeight ?? 0)}` : "还没有登记现金"}
+              hint={
+                capital.netCapitalUsd
+                  ? `${formatSignedUsdWhole(capital.vsCapital)} · 净投入 ${formatUsdWhole(capital.netCapitalUsd)}`
+                  : "还没有本金"
+              }
+              tone={capital.vsCapital}
             />
           </section>
           <section className={cn("mb-1 grid items-start gap-4", !readOnly && "lg:grid-cols-[0.9fr_1.1fr]")}>
