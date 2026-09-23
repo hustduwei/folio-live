@@ -30,9 +30,11 @@ import { cn } from "@/lib/utils";
 export function PortfolioDashboard({
   initialSnapshot,
   formError,
+  readOnly = false,
 }: {
   initialSnapshot: Snapshot;
   formError?: string;
+  readOnly?: boolean;
 }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [error, setError] = useState<string | null>(formError || initialSnapshot.quotesError);
@@ -282,13 +284,15 @@ export function PortfolioDashboard({
               tone={capital.vsCapital}
             />
           </section>
-          <section className="mb-1 grid items-start gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <section className={cn("mb-1 grid items-start gap-4", !readOnly && "lg:grid-cols-[0.9fr_1.1fr]")}>
+            {readOnly ? null : (
+              <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
+                <SectionHead title="登记提现" tag="Cash out" desc="人民币金额 ÷ 当时汇率，记进资金账本" />
+                <CapitalForm snapshot={snapshot} onRecorded={setSnapshot} />
+              </div>
+            )}
             <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
-              <SectionHead title="登记提现" tag="Cash out" desc="人民币金额 ÷ 当时汇率，记进资金账本" />
-              <CapitalForm snapshot={snapshot} onRecorded={setSnapshot} />
-            </div>
-            <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
-              <SectionHead title="资金流水" tag="Ledger" desc="入金和提现都留在这里，撤掉一笔会重算净投入" />
+              <SectionHead title="资金流水" tag="Ledger" desc={readOnly ? "手机上看账本；入金提现继续跟我说" : "入金和提现都留在这里，撤掉一笔会重算净投入"} />
               {(capital.events.length ?? 0) === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">还没有资金记录。</p>
               ) : (
@@ -316,24 +320,26 @@ export function PortfolioDashboard({
                         </span>
                         {event.note ? <span className="text-xs text-muted-foreground">{event.note}</span> : null}
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          void fetch(`/api/capital?id=${encodeURIComponent(event.id)}`, { method: "DELETE" })
-                            .then(async (response) => {
-                              const data = await response.json();
-                              if (!response.ok) throw new Error(data.error || "撤销失败");
-                              setSnapshot(data);
-                            })
-                            .catch((error: unknown) => {
-                              setError(error instanceof Error ? error.message : "撤销失败");
-                            });
-                        }}
-                      >
-                        撤销
-                      </Button>
+                      {readOnly ? null : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            void fetch(`/api/capital?id=${encodeURIComponent(event.id)}`, { method: "DELETE" })
+                              .then(async (response) => {
+                                const data = await response.json();
+                                if (!response.ok) throw new Error(data.error || "撤销失败");
+                                setSnapshot(data);
+                              })
+                              .catch((error: unknown) => {
+                                setError(error instanceof Error ? error.message : "撤销失败");
+                              });
+                          }}
+                        >
+                          撤销
+                        </Button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -342,12 +348,14 @@ export function PortfolioDashboard({
           </section>
         </>
       ) : (
+        readOnly ? null : (
         <section className="mb-3.5">
           <SectionTitle title="资金" tag="Capital" hint="提现和入金按当时人民币汇率折成美元" />
           <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
             <CapitalForm snapshot={snapshot} onRecorded={setSnapshot} />
           </div>
         </section>
+        )
       )}
 
       <SectionTitle title="持仓地图" tag="Map" hint="方块面积 = 仓位占比" />
@@ -377,11 +385,17 @@ export function PortfolioDashboard({
         </p>
       )}
 
-      <section className="mt-8 grid items-start gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
-          <SectionHead title="登记成交" tag="Trade" desc="买入卖出都会立刻改总市值和地图" />
-          <TradeForm snapshot={snapshot} onTraded={setSnapshot} />
-        </div>
+      <section className={cn("mt-8 grid items-start gap-4", !readOnly && "lg:grid-cols-[1.15fr_0.85fr]")}>
+        {readOnly ? (
+          <p className="rounded-[18px] border border-black/10 bg-white px-4 py-3 text-sm text-muted-foreground">
+            这是手机查看版：报价会刷新，买入卖出和提现继续跟我说，我会改账本。
+          </p>
+        ) : (
+          <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
+            <SectionHead title="登记成交" tag="Trade" desc="买入卖出都会立刻改总市值和地图" />
+            <TradeForm snapshot={snapshot} onTraded={setSnapshot} />
+          </div>
+        )}
         <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
           <SectionHead title="行情条" tag="Tape" desc="热门美股，用来确认报价是活的" />
           <div className="grid grid-cols-2 gap-2.5">
@@ -442,24 +456,26 @@ export function PortfolioDashboard({
                   </span>
                   {trade.note && <span className="text-xs text-muted-foreground">{trade.note}</span>}
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    void fetch(`/api/trades?id=${encodeURIComponent(trade.id)}`, { method: "DELETE" })
-                      .then(async (response) => {
-                        const data = await response.json();
-                        if (!response.ok) throw new Error(data.error || "撤销失败");
-                        setSnapshot(data);
-                      })
-                      .catch((error: unknown) => {
-                        setError(error instanceof Error ? error.message : "撤销失败");
-                      });
-                  }}
-                >
-                  撤销
-                </Button>
+                {readOnly ? null : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void fetch(`/api/trades?id=${encodeURIComponent(trade.id)}`, { method: "DELETE" })
+                        .then(async (response) => {
+                          const data = await response.json();
+                          if (!response.ok) throw new Error(data.error || "撤销失败");
+                          setSnapshot(data);
+                        })
+                        .catch((error: unknown) => {
+                          setError(error instanceof Error ? error.message : "撤销失败");
+                        });
+                    }}
+                  >
+                    撤销
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
@@ -467,8 +483,10 @@ export function PortfolioDashboard({
       </div>
 
       <footer className="mt-8 flex flex-wrap justify-between gap-3 border-t border-black/10 pt-4 font-mono text-[11.5px] tracking-wide text-muted-foreground">
-        <p>本地持仓 · 报价 Yahoo Finance · 红涨绿跌</p>
-        <p className="sm:text-right">这不是网页文件，需要用本机的 npm run dev 打开</p>
+        <p>{readOnly ? "手机查看 · 报价 Yahoo Finance · 红涨绿跌" : "本地持仓 · 报价 Yahoo Finance · 红涨绿跌"}</p>
+        <p className="sm:text-right">
+          {readOnly ? "买入卖出和提现跟我说，页面会跟着改" : "这不是网页文件，需要用本机的 npm run dev 打开"}
+        </p>
       </footer>
     </div>
   );

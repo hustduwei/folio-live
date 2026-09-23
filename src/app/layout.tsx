@@ -30,6 +30,14 @@ const jetbrains = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "持仓全景图",
   description: "实时跟踪美股持仓总市值，按板块画出仓位地图。",
+  appleWebApp: {
+    capable: true,
+    title: "持仓全景图",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

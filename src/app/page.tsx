@@ -52,7 +52,11 @@ export default async function Home({
 
   return (
     <main className="flex-1">
-      <PortfolioDashboard initialSnapshot={snapshot} formError={params.error} />
+      <PortfolioDashboard
+        initialSnapshot={snapshot}
+        formError={params.error}
+        readOnly={Boolean(process.env.VERCEL)}
+      />
     </main>
   );
 }
