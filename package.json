@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 43147",
+    "local": "next dev --hostname 127.0.0.1 --port 43147",
     "dev:keep": "bash scripts/keep-dev.sh",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0 --port 43147",
