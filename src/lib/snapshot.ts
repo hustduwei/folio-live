@@ -2,6 +2,7 @@ import { WATCHLIST } from "./aliases";
 import { getMarketClock } from "./market";
 import { deriveHoldings, readPortfolio, summarize } from "./portfolio";
 import { fetchQuotes, normalizeSymbol } from "./quotes";
+import { groupBySector } from "./sectors";
 import type { Snapshot } from "./types";
 
 export async function buildSnapshot(): Promise<Snapshot> {
@@ -21,6 +22,7 @@ export async function buildSnapshot(): Promise<Snapshot> {
 
   const holdings = deriveHoldings(portfolio.trades, quotes);
   const totals = summarize(holdings);
+  const sectors = groupBySector(holdings);
   const watchlist = quotes.filter((quote) => WATCHLIST.includes(quote.symbol));
 
   return {
@@ -28,6 +30,7 @@ export async function buildSnapshot(): Promise<Snapshot> {
     market: getMarketClock(),
     quotesError,
     holdings,
+    sectors,
     watchlist,
     trades: [...portfolio.trades].sort(
       (a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),

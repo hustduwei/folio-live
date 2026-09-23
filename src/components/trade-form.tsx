@@ -60,7 +60,7 @@ export function TradeForm({ snapshot }: Props) {
       <input type="hidden" name="side" value={side} />
       <input type="hidden" name="name" value={name} />
 
-      <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
         <button
           type="button"
           onClick={() => setSide("buy")}
@@ -94,6 +94,7 @@ export function TradeForm({ snapshot }: Props) {
             setName("");
             setPicked(false);
           }}
+          className="h-10"
           placeholder="AAPL 或 苹果"
           autoComplete="off"
         />
@@ -128,6 +129,7 @@ export function TradeForm({ snapshot }: Props) {
             inputMode="decimal"
             defaultValue=""
             onFocus={() => setHits([])}
+            className="h-10"
             placeholder="10"
             autoComplete="off"
           />
@@ -140,6 +142,7 @@ export function TradeForm({ snapshot }: Props) {
             inputMode="decimal"
             defaultValue=""
             onFocus={() => setHits([])}
+            className="h-10"
             placeholder={quoteHint ? quoteHint.toFixed(2) : "180.00"}
             autoComplete="off"
           />
@@ -148,7 +151,7 @@ export function TradeForm({ snapshot }: Props) {
 
       <div className="space-y-1.5">
         <Label htmlFor="note">备注（可选）</Label>
-        <Input id="note" name="note" placeholder="券商 / 账户" autoComplete="off" />
+        <Input id="note" name="note" className="h-10" placeholder="券商 / 账户" autoComplete="off" />
       </div>
 
       <Button type="submit" className="w-full">

@@ -10,6 +10,7 @@ const emptySnapshot = (): Snapshot => ({
   market: getMarketClock(),
   quotesError: "行情暂时不可用",
   holdings: [],
+  sectors: [],
   watchlist: [],
   trades: [],
   totals: {

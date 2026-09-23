@@ -1,32 +1,39 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Noto_Sans_SC } from "next/font/google";
+import { Bricolage_Grotesque, JetBrains_Mono, Noto_Sans_SC } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
+
+const display = Bricolage_Grotesque({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["500", "700", "800"],
+});
 
 const notoSans = Noto_Sans_SC({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "700", "900"],
 });
 
-const geistMono = Geist_Mono({
+const jetbrains = JetBrains_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  weight: ["500", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "美股持仓看板",
-  description: "实时跟踪美股持仓总市值，买入卖出后自动重估。",
+  title: "持仓全景图",
+  description: "实时跟踪美股持仓总市值，按板块画出仓位地图。",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="zh-CN"
-      className={`dark ${notoSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${display.variable} ${notoSans.variable} ${jetbrains.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="flex min-h-full flex-col bg-background text-foreground">
         <Providers>{children}</Providers>
       </body>
     </html>

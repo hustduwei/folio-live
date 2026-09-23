@@ -70,11 +70,41 @@ export type PortfolioTotals = {
   dayPnlPercent: number;
 };
 
+export type SectorMeta = {
+  key: string;
+  zh: string;
+  en: string;
+  icon: string;
+  hex: string;
+};
+
+export type SectorHoldingRow = {
+  symbol: string;
+  name: string;
+  weight: number;
+  sectorWeight: number;
+  marketValue: number;
+  changePercent: number;
+  dayPnl: number;
+  pnl: number;
+  shares: number;
+  price: number;
+};
+
+export type SectorGroup = SectorMeta & {
+  weight: number;
+  marketValue: number;
+  dayPnl: number;
+  pnl: number;
+  holdings: SectorHoldingRow[];
+};
+
 export type Snapshot = {
   fetchedAt: string;
   market: MarketClock;
   quotesError: string | null;
   holdings: Holding[];
+  sectors: SectorGroup[];
   watchlist: Quote[];
   trades: Trade[];
   totals: PortfolioTotals;

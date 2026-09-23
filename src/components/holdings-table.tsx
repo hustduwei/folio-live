@@ -24,10 +24,10 @@ import { cn } from "@/lib/utils";
 export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
   if (holdings.length === 0) {
     return (
-      <div className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed px-6 py-10 text-center">
-        <p className="text-base font-medium">还没有持仓</p>
+      <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed border-black/10 px-6 py-10 text-center">
+        <p className="font-display text-lg font-bold">还没有持仓</p>
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          直接跟我说买入或卖出，例如「买入 AAPL 10 股，成本 180」；也可以在右侧把成交登记进来。登记后总市值会跟着行情跳动。
+          直接跟我说买入或卖出，例如「买入 AAPL 10 股，成本 180」；也可以在上面把成交登记进来。登记后地图和总市值会跟着行情走。
         </p>
       </div>
     );
@@ -95,7 +95,7 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
 
       <div className="grid gap-3 md:hidden">
         {holdings.map((row) => (
-          <article key={row.symbol} className="rounded-xl border bg-card p-4">
+          <article key={row.symbol} className="rounded-xl border border-black/10 bg-[#F7F8FC] p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-mono text-sm font-semibold">{row.symbol}</p>

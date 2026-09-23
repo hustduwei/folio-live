@@ -40,6 +40,12 @@ export function formatShares(value: number): string {
   }).format(value);
 }
 
+export function formatWeight(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const digits = Math.abs(value - Math.round(value)) < 0.05 ? 0 : 1;
+  return `${value.toFixed(digits)}%`;
+}
+
 export function formatPercent(value: number, digits = 2): string {
   if (!Number.isFinite(value)) return "—";
   const sign = value > 0 ? "+" : "";

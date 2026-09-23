@@ -1,4 +1,65 @@
 {
   "version": 1,
-  "trades": []
+  "trades": [
+    {
+      "id": "demo-nvda",
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "side": "buy",
+      "shares": 8,
+      "price": 120,
+      "executedAt": "2026-01-15T15:30:00.000Z",
+      "note": "示例仓，可撤销"
+    },
+    {
+      "id": "demo-aapl",
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "side": "buy",
+      "shares": 15,
+      "price": 180,
+      "executedAt": "2026-02-03T15:30:00.000Z",
+      "note": "示例仓，可撤销"
+    },
+    {
+      "id": "demo-tsla",
+      "symbol": "TSLA",
+      "name": "Tesla, Inc.",
+      "side": "buy",
+      "shares": 6,
+      "price": 240,
+      "executedAt": "2026-03-12T14:30:00.000Z",
+      "note": "示例仓，可撤销"
+    },
+    {
+      "id": "demo-amzn",
+      "symbol": "AMZN",
+      "name": "Amazon.com, Inc.",
+      "side": "buy",
+      "shares": 4,
+      "price": 180,
+      "executedAt": "2026-04-08T14:30:00.000Z",
+      "note": "示例仓，可撤销"
+    },
+    {
+      "id": "demo-jpm",
+      "symbol": "JPM",
+      "name": "JPMorgan Chase & Co.",
+      "side": "buy",
+      "shares": 10,
+      "price": 200,
+      "executedAt": "2026-05-20T14:30:00.000Z",
+      "note": "示例仓，可撤销"
+    },
+    {
+      "id": "demo-baba",
+      "symbol": "BABA",
+      "name": "Alibaba Group Holding Limited",
+      "side": "buy",
+      "shares": 20,
+      "price": 85,
+      "executedAt": "2026-06-11T14:30:00.000Z",
+      "note": "示例仓，可撤销"
+    }
+  ]
 }
