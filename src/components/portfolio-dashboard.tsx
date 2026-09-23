@@ -6,6 +6,7 @@ import { FlashValue } from "@/components/flash-value";
 import { HoldingsTable } from "@/components/holdings-table";
 import { HoldingsTreemap } from "@/components/holdings-treemap";
 import { LiveClock } from "@/components/live-clock";
+import { CapitalForm } from "@/components/capital-form";
 import { SectorAllocation, SectorCards } from "@/components/sector-board";
 import { Sparkline } from "@/components/sparkline";
 import { TradeForm } from "@/components/trade-form";
@@ -215,7 +216,7 @@ export function PortfolioDashboard({
                   {formatUsdWhole(capital.principalUsd)}
                 </span>
               }
-              hint={`${formatCnyWhole(capital.principalCny)} · 汇率 7.1`}
+              hint={`${formatCnyWhole(capital.principalCny)} · ${capital.events.filter((row) => row.kind === "deposit").length} 笔入金`}
             />
             <StatTile
               label="提现"
@@ -227,7 +228,7 @@ export function PortfolioDashboard({
                   {formatUsdWhole(capital.withdrawnUsd)}
                 </span>
               }
-              hint={`${formatCnyWhole(capital.withdrawnCny)} · 金饰品 · 汇率 7.0`}
+              hint={`${formatCnyWhole(capital.withdrawnCny)} · ${capital.events.filter((row) => row.kind === "withdraw").length} 笔`}
             />
             <StatTile
               label="净投入"
@@ -260,8 +261,73 @@ export function PortfolioDashboard({
               tone={capital.vsCapital}
             />
           </section>
+          <section className="mb-1 grid items-start gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
+              <SectionHead title="登记提现" tag="Cash out" desc="人民币金额 ÷ 当时汇率，记进资金账本" />
+              <CapitalForm snapshot={snapshot} onRecorded={setSnapshot} />
+            </div>
+            <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
+              <SectionHead title="资金流水" tag="Ledger" desc="入金和提现都留在这里，撤掉一笔会重算净投入" />
+              {(capital.events.length ?? 0) === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">还没有资金记录。</p>
+              ) : (
+                <ul className="divide-y divide-black/10">
+                  {[...capital.events].reverse().map((event) => (
+                    <li key={event.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            event.kind === "deposit" ? "bg-[#0369A1]/12 text-[#0369A1]" : "bg-[#B45309]/12 text-[#B45309]",
+                          )}
+                        >
+                          {event.kind === "deposit" ? "入金" : "提现"}
+                        </Badge>
+                        <span className="font-mono font-bold">{formatCnyWhole(event.cny)}</span>
+                        <span className="text-muted-foreground">
+                          ÷ {event.fx} = {formatUsd(event.usd)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Intl.DateTimeFormat("zh-CN", {
+                            month: "numeric",
+                            day: "numeric",
+                          }).format(new Date(event.executedAt))}
+                        </span>
+                        {event.note ? <span className="text-xs text-muted-foreground">{event.note}</span> : null}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          void fetch(`/api/capital?id=${encodeURIComponent(event.id)}`, { method: "DELETE" })
+                            .then(async (response) => {
+                              const data = await response.json();
+                              if (!response.ok) throw new Error(data.error || "撤销失败");
+                              setSnapshot(data);
+                            })
+                            .catch((error: unknown) => {
+                              setError(error instanceof Error ? error.message : "撤销失败");
+                            });
+                        }}
+                      >
+                        撤销
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
         </>
-      ) : null}
+      ) : (
+        <section className="mb-3.5">
+          <SectionTitle title="资金" tag="Capital" hint="提现和入金按当时人民币汇率折成美元" />
+          <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
+            <CapitalForm snapshot={snapshot} onRecorded={setSnapshot} />
+          </div>
+        </section>
+      )}
 
       <SectionTitle title="持仓地图" tag="Map" hint="方块面积 = 仓位占比" />
       <div className="card-rise mapwrap rounded-[20px] border border-black/10 bg-white p-3.5">

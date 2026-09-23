@@ -21,6 +21,7 @@ export type CapitalEvent = {
   usd: number;
   note?: string;
   executedAt: string;
+  affectsCash?: boolean;
 };
 
 export type PortfolioFile = {

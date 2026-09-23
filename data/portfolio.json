@@ -9,7 +9,8 @@
       "fx": 7.1,
       "usd": 35380.42,
       "note": "账户原始资本",
-      "executedAt": "2026-03-01T00:00:00.000Z"
+      "executedAt": "2026-03-01T00:00:00.000Z",
+      "affectsCash": false
     },
     {
       "id": "cap-gold-baby",
@@ -18,7 +19,8 @@
       "fx": 7.0,
       "usd": 2094,
       "note": "给宝宝买金饰品",
-      "executedAt": "2026-06-20T00:00:00.000Z"
+      "executedAt": "2026-06-20T00:00:00.000Z",
+      "affectsCash": false
     }
   ],
   "trades": [

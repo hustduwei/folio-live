@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import seed from "../../data/portfolio.json";
 import type {
   CapitalEvent,
+  CapitalKind,
   CapitalSummary,
   Holding,
   PortfolioFile,
@@ -59,6 +60,7 @@ export function normalizeCapital(events: unknown): CapitalEvent[] {
       usd,
       note: row.note?.trim() || undefined,
       executedAt: row.executedAt || new Date().toISOString(),
+      affectsCash: row.affectsCash === true,
     });
   }
   return next;
@@ -212,6 +214,63 @@ export function summarizeCapital(events: CapitalEvent[], netValue: number): Capi
     vsCapital,
     vsCapitalPercent: netCapitalUsd > 0 ? (vsCapital / netCapitalUsd) * 100 : 0,
   };
+}
+
+export async function addCapitalEvent(input: {
+  kind: CapitalKind;
+  cny: number;
+  fx: number;
+  note?: string;
+  executedAt?: string;
+  affectsCash?: boolean;
+}): Promise<CapitalEvent> {
+  const cny = Number(input.cny);
+  const fx = Number(input.fx);
+  if (!Number.isFinite(cny) || cny <= 0) throw new Error("人民币金额必须大于 0");
+  if (!Number.isFinite(fx) || fx <= 0) throw new Error("汇率必须大于 0");
+  const kind = input.kind === "withdraw" ? "withdraw" : input.kind === "deposit" ? "deposit" : null;
+  if (!kind) throw new Error("请选择入金或提现");
+
+  return withLock(async () => {
+    const portfolio = await readPortfolio();
+    const event: CapitalEvent = {
+      id: randomUUID(),
+      kind,
+      cny: money2(cny),
+      fx,
+      usd: money2(cny / fx),
+      note: input.note?.trim() || undefined,
+      executedAt: input.executedAt || new Date().toISOString(),
+      affectsCash: input.affectsCash !== false,
+    };
+    if (event.affectsCash) {
+      if (kind === "withdraw") {
+        portfolio.cash = normalizeCash(Math.max(0, portfolio.cash - event.usd));
+      } else {
+        portfolio.cash = normalizeCash(portfolio.cash + event.usd);
+      }
+    }
+    portfolio.capital.push(event);
+    await writePortfolio(portfolio);
+    return event;
+  });
+}
+
+export async function removeCapitalEvent(id: string): Promise<void> {
+  await withLock(async () => {
+    const portfolio = await readPortfolio();
+    const event = portfolio.capital.find((row) => row.id === id);
+    if (!event) throw new Error("找不到这笔资金记录");
+    if (event.affectsCash) {
+      if (event.kind === "withdraw") {
+        portfolio.cash = normalizeCash(portfolio.cash + event.usd);
+      } else {
+        portfolio.cash = normalizeCash(Math.max(0, portfolio.cash - event.usd));
+      }
+    }
+    portfolio.capital = portfolio.capital.filter((row) => row.id !== id);
+    await writePortfolio(portfolio);
+  });
 }
 
 export async function setCash(amount: number): Promise<number> {
