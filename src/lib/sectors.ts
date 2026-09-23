@@ -122,6 +122,7 @@ export const TICKER_HEX: Record<string, string> = {
   MSTR: "#DC5C14",
   CRCL: "#3DCFCF",
   RKLB: "#C41414",
+  SPCX: "#2C2C2C",
   VSAT: "#0F4C81",
   PLTR: "#3C3C3C",
   SOFI: "#30A8D8",

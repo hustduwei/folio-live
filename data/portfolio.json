@@ -108,6 +108,24 @@
       "shares": 5,
       "price": 135.578,
       "executedAt": "2026-08-19T14:30:00.000Z"
+    },
+    {
+      "id": "06116719-8798-46bd-a671-cf6195b4b06d",
+      "symbol": "RKLB",
+      "name": "Rocket Lab",
+      "side": "buy",
+      "shares": 129,
+      "price": 65.749,
+      "executedAt": "2026-09-23T05:24:48.063Z"
+    },
+    {
+      "id": "e99bb35e-feb6-4426-9f4d-fa5e49c52903",
+      "symbol": "SPCX",
+      "name": "SPCX",
+      "side": "buy",
+      "shares": 24,
+      "price": 136.958,
+      "executedAt": "2026-09-23T05:24:48.191Z"
     }
   ]
 }
