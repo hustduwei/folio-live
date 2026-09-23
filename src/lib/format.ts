@@ -58,6 +58,25 @@ export function formatSignedUsd(value: number): string {
   return `${sign}${usd.format(value)}`;
 }
 
+const usdWhole = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+export function formatUsdWhole(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  return usdWhole.format(Math.round(value));
+}
+
+export function formatSignedUsdWhole(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const rounded = Math.round(value);
+  const sign = rounded > 0 ? "+" : "";
+  return `${sign}${usdWhole.format(rounded)}`;
+}
+
 export function signedClass(value: number): string {
   if (!Number.isFinite(value) || value === 0) return "text-muted-foreground";
   return value > 0 ? "text-up" : "text-down";

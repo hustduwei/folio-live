@@ -14,9 +14,10 @@ import { Button } from "@/components/ui/button";
 import {
   formatPercent,
   formatShares,
-  formatSignedUsd,
+  formatSignedUsdWhole,
   formatUsd,
   formatUsdPrecise,
+  formatUsdWhole,
   formatWeight,
   signedClass,
 } from "@/lib/format";
@@ -129,11 +130,11 @@ export function PortfolioDashboard({
           color="#0369A1"
           delay={0.1}
           value={
-            <FlashValue value={totals.netValue ?? totals.marketValue + cash}>
+            <FlashValue value={Math.round(totals.netValue ?? totals.marketValue + cash)}>
               <AnimatedNumber
                 value={totals.netValue ?? totals.marketValue + cash}
-                format={formatUsd}
-                className="font-display text-[clamp(26px,3vw,38px)] font-extrabold tracking-[-0.01em]"
+                format={formatUsdWhole}
+                className="font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none"
               />
             </FlashValue>
           }
@@ -149,9 +150,11 @@ export function PortfolioDashboard({
           color="#EA580C"
           delay={0.16}
           value={
-            <span className={cn("font-display text-[clamp(26px,3vw,38px)] font-extrabold tracking-[-0.01em]", signedClass(totals.dayPnl))}>
-              {formatSignedUsd(totals.dayPnl)}
-            </span>
+            <AnimatedNumber
+              value={totals.dayPnl}
+              format={formatSignedUsdWhole}
+              className={cn("font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none", signedClass(totals.dayPnl))}
+            />
           }
           hint={formatPercent(totals.dayPnlPercent)}
           tone={totals.dayPnl}
@@ -162,9 +165,11 @@ export function PortfolioDashboard({
           color="#C41414"
           delay={0.22}
           value={
-            <span className={cn("font-display text-[clamp(26px,3vw,38px)] font-extrabold tracking-[-0.01em]", signedClass(totals.pnl))}>
-              {formatSignedUsd(totals.pnl)}
-            </span>
+            <AnimatedNumber
+              value={totals.pnl}
+              format={formatSignedUsdWhole}
+              className={cn("font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none", signedClass(totals.pnl))}
+            />
           }
           hint={`${formatPercent(totals.pnlPercent)} · 成本 ${formatUsd(totals.cost)}`}
           tone={totals.pnl}
@@ -175,11 +180,11 @@ export function PortfolioDashboard({
           color="#5B6478"
           delay={0.28}
           value={
-            <FlashValue value={cash}>
+            <FlashValue value={Math.round(cash)}>
               <AnimatedNumber
                 value={cash}
-                format={formatUsd}
-                className="font-display text-[clamp(26px,3vw,38px)] font-extrabold tracking-[-0.01em]"
+                format={formatUsdWhole}
+                className="font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none"
               />
             </FlashValue>
           }

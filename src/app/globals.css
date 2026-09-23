@@ -107,6 +107,11 @@
   .font-display {
     font-family: var(--font-display), var(--font-sans), sans-serif;
   }
+  .font-stat {
+    font-family: var(--font-stat), var(--font-geist-mono), ui-monospace, sans-serif;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
 }
 
 .hero-title {

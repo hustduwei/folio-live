@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, JetBrains_Mono, Noto_Sans_SC } from "next/font/google";
+import { Bricolage_Grotesque, JetBrains_Mono, Noto_Sans_SC, Orbitron } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -7,6 +7,12 @@ const display = Bricolage_Grotesque({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["700", "800"],
+});
+
+const stat = Orbitron({
+  variable: "--font-stat",
+  subsets: ["latin"],
+  weight: ["600", "700"],
 });
 
 const notoSans = Noto_Sans_SC({
@@ -30,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="zh-CN"
-      className={`${display.variable} ${notoSans.variable} ${jetbrains.variable} h-full antialiased`}
+      className={`${display.variable} ${stat.variable} ${notoSans.variable} ${jetbrains.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
