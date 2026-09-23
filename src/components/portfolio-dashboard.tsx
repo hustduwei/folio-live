@@ -116,6 +116,12 @@ export function PortfolioDashboard({
                 · 今年 <b className={signedClass(year.ytdPnl)}>{formatPercent(year.ytdPercent)}</b>
               </>
             ) : null}
+            {capital?.netCapitalUsd ? (
+              <>
+                {" "}
+                · 账户 <b className={signedClass(capital.vsCapital)}>{formatPercent(capital.vsCapitalPercent)}</b>
+              </>
+            ) : null}
             {cash > 0 ? (
               <>
                 {" "}
@@ -151,13 +157,10 @@ export function PortfolioDashboard({
             </FlashValue>
           }
           hint={
-            capital?.netCapitalUsd
-              ? `相对本金 ${formatSignedUsdWhole(capital.vsCapital)} · ${formatPercent(capital.vsCapitalPercent)}`
-              : snapshot.holdings.length > 0
-                ? `股票 ${formatUsd(totals.marketValue)}`
-                : "等待第一笔买入"
+            snapshot.holdings.length > 0
+              ? `股票 ${formatUsdWhole(totals.marketValue)}${cash > 0 ? ` · 现金 ${formatUsdWhole(cash)}` : ""}`
+              : "等待第一笔买入"
           }
-          tone={capital?.netCapitalUsd ? capital.vsCapital : undefined}
         />
         <StatTile
           label="今日"
@@ -175,55 +178,119 @@ export function PortfolioDashboard({
           tone={totals.dayPnl}
         />
         <StatTile
-          label="今年"
+          label="今年收益率"
           en="YTD"
           color="#C41414"
           delay={0.22}
           value={
-            year ? (
-              <AnimatedNumber
-                value={year.ytdPnl}
-                format={formatSignedUsdWhole}
-                className={cn("font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none", signedClass(year.ytdPnl))}
-              />
-            ) : (
-              <AnimatedNumber
-                value={totals.pnl}
-                format={formatSignedUsdWhole}
-                className={cn("font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none", signedClass(totals.pnl))}
-              />
-            )
+            <AnimatedNumber
+              value={year?.ytdPercent ?? 0}
+              format={formatPercent}
+              className={cn(
+                "font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none",
+                signedClass(year?.ytdPnl ?? 0),
+              )}
+            />
           }
           hint={
             year
-              ? `${formatPercent(year.ytdPercent)} · 年初 ${formatUsdWhole(year.startUsd)}${
-                  year.withdrawals > 0 ? ` · 已加回提现 ${formatUsdWhole(year.withdrawals)}` : ""
-                }`
-              : `${formatPercent(totals.pnlPercent)} · 成本 ${formatUsd(totals.cost)}`
+              ? `${formatSignedUsdWhole(year.ytdPnl)} · 年初 ${formatUsdWhole(year.startUsd)}`
+              : "还没有年初净值"
           }
-          tone={year ? year.ytdPnl : totals.pnl}
+          tone={year?.ytdPnl}
         />
         <StatTile
-          label="现金"
-          en="Cash"
-          color="#5B6478"
+          label="账户收益率"
+          en="All"
+          color="#7C3AED"
           delay={0.28}
           value={
-            <FlashValue value={Math.round(cash)}>
-              <AnimatedNumber
-                value={cash}
-                format={formatUsdWhole}
-                className="font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none"
-              />
-            </FlashValue>
+            <AnimatedNumber
+              value={capital?.vsCapitalPercent ?? 0}
+              format={formatPercent}
+              className={cn(
+                "font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none",
+                signedClass(capital?.vsCapital ?? 0),
+              )}
+            />
           }
           hint={
-            cash > 0
-              ? `占总资产 ${formatWeight(totals.cashWeight ?? 0)}`
-              : "还没有登记现金"
+            capital?.netCapitalUsd
+              ? `${formatSignedUsdWhole(capital.vsCapital)} · 净投入 ${formatUsdWhole(capital.netCapitalUsd)}`
+              : "还没有本金"
           }
+          tone={capital?.vsCapital}
         />
       </section>
+
+      <SectionTitle title="持仓地图" tag="Map" hint="方块面积 = 仓位占比" />
+      <div className="card-rise mapwrap rounded-[20px] border border-black/10 bg-white p-3.5">
+        <HoldingsTreemap sectors={sectors} />
+      </div>
+
+      <SectionTitle
+        title="板块配置"
+        tag="Allocation"
+        hint={
+          sectors.length > 0
+            ? cash > 0
+              ? `占总资产 ${formatWeight(sectors.reduce((sum, sector) => sum + sector.weight, 0))}`
+              : `占股票总仓位 ${formatWeight(sectors.reduce((sum, sector) => sum + sector.weight, 0))}`
+            : undefined
+        }
+      />
+      <SectorAllocation sectors={sectors} />
+
+      <SectionTitle title="板块明细" tag="Sectors" hint="涨跌按最新报价，红涨绿跌" />
+      {sectors.length > 0 ? (
+        <SectorCards sectors={sectors} />
+      ) : (
+        <p className="rounded-[18px] border border-dashed border-black/10 bg-white/70 px-4 py-10 text-center text-sm text-muted-foreground">
+          还没有板块。买入后会按科技、消费、金融等自动归类。
+        </p>
+      )}
+
+      <section className={cn("mt-8 grid items-start gap-4", !readOnly && "lg:grid-cols-[1.15fr_0.85fr]")}>
+        {readOnly ? (
+          <p className="rounded-[18px] border border-black/10 bg-white px-4 py-3 text-sm text-muted-foreground">
+            这是手机查看版：报价会刷新，买入卖出和提现继续跟我说，我会改账本。
+          </p>
+        ) : (
+          <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
+            <SectionHead title="登记成交" tag="Trade" desc="买入卖出都会立刻改总市值和地图" />
+            <TradeForm snapshot={snapshot} onTraded={setSnapshot} />
+          </div>
+        )}
+        <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
+          <SectionHead title="行情条" tag="Tape" desc="热门美股，用来确认报价是活的" />
+          <div className="grid grid-cols-2 gap-2.5">
+            {(snapshot.watchlist ?? []).map((quote) => (
+              <div key={quote.symbol} className="rounded-xl border border-black/10 bg-[#F7F8FC] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="font-mono text-sm font-bold">{quote.symbol}</p>
+                    <p className="max-w-24 truncate text-[11px] text-muted-foreground">{quote.name}</p>
+                  </div>
+                  <Sparkline points={quote.spark} up={quote.change >= 0} className="h-6 w-14" />
+                </div>
+                <div className="mt-2 flex items-end justify-between">
+                  <FlashValue value={quote.price} className="font-mono text-base font-bold">
+                    {formatUsdPrecise(quote.price)}
+                  </FlashValue>
+                  <span className={cn("font-mono text-xs font-bold", signedClass(quote.changePercent))}>
+                    {formatPercent(quote.changePercent)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <SectionTitle title="持仓明细" tag="Holdings" hint="按最新报价重估，平均成本法" />
+      <div className="card-rise overflow-hidden rounded-[18px] border border-black/10 bg-white p-4 sm:p-5">
+        <HoldingsTable holdings={snapshot.holdings} />
+      </div>
 
       {capital && capital.principalUsd > 0 ? (
         <>
@@ -266,22 +333,16 @@ export function PortfolioDashboard({
               hint="入金 − 提现"
             />
             <StatTile
-              label="相对本金"
-              en="vs In"
-              color="#C41414"
+              label="现金"
+              en="Cash"
+              color="#5B6478"
               delay={0.22}
               value={
-                <AnimatedNumber
-                  value={capital.vsCapital}
-                  format={formatSignedUsdWhole}
-                  className={cn(
-                    "font-stat text-[clamp(22px,2.6vw,34px)] font-bold leading-none",
-                    signedClass(capital.vsCapital),
-                  )}
-                />
+                <span className="font-stat text-[clamp(22px,2.6vw,34px)] font-bold leading-none">
+                  {formatUsdWhole(cash)}
+                </span>
               }
-              hint={formatPercent(capital.vsCapitalPercent)}
-              tone={capital.vsCapital}
+              hint={cash > 0 ? `占总资产 ${formatWeight(totals.cashWeight ?? 0)}` : "还没有登记现金"}
             />
           </section>
           <section className={cn("mb-1 grid items-start gap-4", !readOnly && "lg:grid-cols-[0.9fr_1.1fr]")}>
@@ -357,75 +418,6 @@ export function PortfolioDashboard({
         </section>
         )
       )}
-
-      <SectionTitle title="持仓地图" tag="Map" hint="方块面积 = 仓位占比" />
-      <div className="card-rise mapwrap rounded-[20px] border border-black/10 bg-white p-3.5">
-        <HoldingsTreemap sectors={sectors} />
-      </div>
-
-      <SectionTitle
-        title="板块配置"
-        tag="Allocation"
-        hint={
-          sectors.length > 0
-            ? cash > 0
-              ? `占总资产 ${formatWeight(sectors.reduce((sum, sector) => sum + sector.weight, 0))}`
-              : `占股票总仓位 ${formatWeight(sectors.reduce((sum, sector) => sum + sector.weight, 0))}`
-            : undefined
-        }
-      />
-      <SectorAllocation sectors={sectors} />
-
-      <SectionTitle title="板块明细" tag="Sectors" hint="涨跌按最新报价，红涨绿跌" />
-      {sectors.length > 0 ? (
-        <SectorCards sectors={sectors} />
-      ) : (
-        <p className="rounded-[18px] border border-dashed border-black/10 bg-white/70 px-4 py-10 text-center text-sm text-muted-foreground">
-          还没有板块。买入后会按科技、消费、金融等自动归类。
-        </p>
-      )}
-
-      <section className={cn("mt-8 grid items-start gap-4", !readOnly && "lg:grid-cols-[1.15fr_0.85fr]")}>
-        {readOnly ? (
-          <p className="rounded-[18px] border border-black/10 bg-white px-4 py-3 text-sm text-muted-foreground">
-            这是手机查看版：报价会刷新，买入卖出和提现继续跟我说，我会改账本。
-          </p>
-        ) : (
-          <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
-            <SectionHead title="登记成交" tag="Trade" desc="买入卖出都会立刻改总市值和地图" />
-            <TradeForm snapshot={snapshot} onTraded={setSnapshot} />
-          </div>
-        )}
-        <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
-          <SectionHead title="行情条" tag="Tape" desc="热门美股，用来确认报价是活的" />
-          <div className="grid grid-cols-2 gap-2.5">
-            {(snapshot.watchlist ?? []).map((quote) => (
-              <div key={quote.symbol} className="rounded-xl border border-black/10 bg-[#F7F8FC] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="font-mono text-sm font-bold">{quote.symbol}</p>
-                    <p className="max-w-24 truncate text-[11px] text-muted-foreground">{quote.name}</p>
-                  </div>
-                  <Sparkline points={quote.spark} up={quote.change >= 0} className="h-6 w-14" />
-                </div>
-                <div className="mt-2 flex items-end justify-between">
-                  <FlashValue value={quote.price} className="font-mono text-base font-bold">
-                    {formatUsdPrecise(quote.price)}
-                  </FlashValue>
-                  <span className={cn("font-mono text-xs font-bold", signedClass(quote.changePercent))}>
-                    {formatPercent(quote.changePercent)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <SectionTitle title="持仓明细" tag="Holdings" hint="按最新报价重估，平均成本法" />
-      <div className="card-rise overflow-hidden rounded-[18px] border border-black/10 bg-white p-4 sm:p-5">
-        <HoldingsTable holdings={snapshot.holdings} />
-      </div>
 
       <SectionTitle title="成交记录" tag="Ledger" hint="这是持仓的唯一来源，撤掉一笔会重算仓位" />
       <div className="card-rise overflow-hidden rounded-[18px] border border-black/10 bg-white p-4 sm:p-5">
