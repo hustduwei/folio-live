@@ -158,7 +158,7 @@ export function PortfolioDashboard({
           }
           hint={
             snapshot.holdings.length > 0
-              ? `股票 ${formatUsdWhole(totals.marketValue)}${cash > 0 ? ` · 现金 ${formatUsdWhole(cash)}` : ""}`
+              ? `股票 ${formatUsdWhole(totals.marketValue)}`
               : "等待第一笔买入"
           }
         />
@@ -481,7 +481,9 @@ export function PortfolioDashboard({
       <footer className="mt-8 flex flex-wrap justify-between gap-3 border-t border-black/10 pt-4 font-mono text-[11.5px] tracking-wide text-muted-foreground">
         <p>{readOnly ? "手机查看 · 报价 Yahoo Finance · 红涨绿跌" : "本地持仓 · 报价 Yahoo Finance · 红涨绿跌"}</p>
         <p className="sm:text-right">
-          {readOnly ? "买入卖出和提现跟我说，页面会跟着改" : "这不是网页文件，需要用本机的 npm run dev 打开"}
+          {readOnly
+            ? "买入卖出和提现跟我说，页面会跟着改"
+            : "在你电脑上用 npm run preview，然后打开 http://localhost:43147"}
         </p>
       </footer>
     </div>
