@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "cash": 4544.82,
+  "cash": 3519.32,
   "capital": [
     {
       "id": "cap-principal",
@@ -165,6 +165,16 @@
       "executedAt": "2026-09-29T05:34:56.309Z",
       "affectsCash": true,
       "note": "卖出所得计入现金"
+    },
+    {
+      "id": "3933fcc3-b705-4665-aa79-9507cbaa2ae6",
+      "symbol": "SPCX",
+      "name": "spacex",
+      "side": "buy",
+      "shares": 7,
+      "price": 146.5,
+      "executedAt": "2026-09-29T05:39:46.281Z",
+      "affectsCash": true
     }
   ]
 }
