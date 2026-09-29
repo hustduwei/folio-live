@@ -1,11 +1,6 @@
 {
   "version": 1,
-  "cash": 3578.32,
-  "yearStart": {
-    "date": "2026-01-01",
-    "usd": 52418,
-    "note": "2026年1月1日账户净值"
-  },
+  "cash": 4544.82,
   "capital": [
     {
       "id": "cap-principal",
@@ -21,13 +16,18 @@
       "id": "cap-gold-baby",
       "kind": "withdraw",
       "cny": 14658,
-      "fx": 7.0,
+      "fx": 7,
       "usd": 2094,
       "note": "给宝宝买金饰品",
       "executedAt": "2026-06-20T00:00:00.000Z",
       "affectsCash": false
     }
   ],
+  "yearStart": {
+    "date": "2026-01-01",
+    "usd": 52418,
+    "note": "2026年1月1日账户净值"
+  },
   "trades": [
     {
       "id": "pos-crcl",
@@ -154,6 +154,17 @@
       "shares": 24,
       "price": 136.958,
       "executedAt": "2026-09-23T05:24:48.191Z"
+    },
+    {
+      "id": "d2e8083e-9d07-41b1-9b94-c8e734adbe28",
+      "symbol": "PLTR",
+      "name": "palantir",
+      "side": "sell",
+      "shares": 5,
+      "price": 193.3,
+      "executedAt": "2026-09-29T05:34:56.309Z",
+      "affectsCash": true,
+      "note": "卖出所得计入现金"
     }
   ]
 }

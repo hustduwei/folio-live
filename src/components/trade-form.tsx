@@ -217,7 +217,7 @@ export function TradeForm({ snapshot, onTraded }: Props) {
         {pending ? "登记中…" : side === "buy" ? "记入买入" : "记入卖出"}
       </Button>
       <p className="text-xs leading-5 text-muted-foreground">
-        之后你也可以直接在对话里说：「买入 NVDA 5 股，成本 120」。我会改持仓，页面会自动跟上。
+        卖出所得会计入现金，买入会从现金里扣。也可以直接说：「卖出 PLTR 5 股，成交价 193.3」。
       </p>
     </form>
   );

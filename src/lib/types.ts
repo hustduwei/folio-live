@@ -9,6 +9,7 @@ export type Trade = {
   price: number;
   executedAt: string;
   note?: string;
+  affectsCash?: boolean;
 };
 
 export type CapitalKind = "deposit" | "withdraw";

@@ -342,6 +342,18 @@ export function heldShares(trades: Trade[], symbol: string): number {
   }, 0);
 }
 
+function tradeCashAmount(trade: Pick<Trade, "shares" | "price">): number {
+  return money2(trade.shares * trade.price);
+}
+
+function applyTradeToCash(cash: number, trade: Trade, undo = false): number {
+  if (trade.affectsCash !== true) return normalizeCash(cash);
+  const amount = tradeCashAmount(trade);
+  const sign = trade.side === "sell" ? 1 : -1;
+  const delta = (undo ? -sign : sign) * amount;
+  return normalizeCash(Math.max(0, cash + delta));
+}
+
 export async function addTrade(input: {
   symbol: string;
   name?: string;
@@ -350,6 +362,7 @@ export async function addTrade(input: {
   price: number;
   executedAt?: string;
   note?: string;
+  affectsCash?: boolean;
 }): Promise<Trade> {
   const symbol = normalizeSymbol(input.symbol);
   if (!symbol) throw new Error("请填写股票代码");
@@ -380,7 +393,9 @@ export async function addTrade(input: {
       note: input.note?.trim() || undefined,
     };
 
+    trade.affectsCash = input.affectsCash !== false;
     portfolio.trades.push(trade);
+    portfolio.cash = applyTradeToCash(portfolio.cash, trade);
     await writePortfolio(portfolio);
     return trade;
   });
@@ -389,8 +404,9 @@ export async function addTrade(input: {
 export async function removeTrade(id: string): Promise<void> {
   await withLock(async () => {
     const portfolio = await readPortfolio();
+    const removed = portfolio.trades.find((trade) => trade.id === id);
     const next = portfolio.trades.filter((trade) => trade.id !== id);
-    if (next.length === portfolio.trades.length) {
+    if (!removed) {
       throw new Error("找不到这笔交易");
     }
     const replay = deriveHoldings(next, []);
@@ -400,7 +416,7 @@ export async function removeTrade(id: string): Promise<void> {
     }
     await writePortfolio({
       version: 1,
-      cash: portfolio.cash,
+      cash: applyTradeToCash(portfolio.cash, removed, true),
       capital: portfolio.capital,
       yearStart: portfolio.yearStart,
       trades: next,
