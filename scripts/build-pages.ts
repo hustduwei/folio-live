@@ -195,7 +195,7 @@ function render(snapshot: Snapshot): string {
 </head>
 <body>
   <main>
-    <p class="sub">美股持仓 · 网页版 · 报价更新于北京时间 ${esc(when)} · 大约每小时自动刷新</p>
+    <p class="sub">美股持仓 · 网页版 · 报价更新于北京时间 ${esc(when)} · 大约每 5 分钟自动刷新</p>
     <h1>持仓全景图</h1>
     <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
