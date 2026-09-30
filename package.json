@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start --hostname 0.0.0.0 --port 43147",
     "preview": "next build && next start --hostname 0.0.0.0 --port 43147",
-    "lint": "eslint"
+    "lint": "eslint",
+    "pages": "tsx scripts/build-pages.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -32,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
