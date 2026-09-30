@@ -122,34 +122,37 @@ function mapBlocks(snapshot: Snapshot): string {
 
 function sectorBar(sectors: SectorGroup[]): string {
   return sectors
-    .map(
-      (sector) =>
-        `<i title="${esc(sector.zh)} ${formatWeight(sector.weight)}" style="width:${sector.weight}%;background:${sector.hex}"></i>`,
-    )
+    .map((sector) => {
+      const label = sector.weight >= 9 ? `${esc(sector.zh)} ${esc(formatWeight(sector.weight))}` : "";
+      return `<i title="${esc(sector.zh)} ${esc(formatWeight(sector.weight))}" style="flex:${Math.max(sector.weight, 0.6)} 1 0;background:${sector.hex}">${label}</i>`;
+    })
     .join("");
 }
 
 function sectorCards(sectors: SectorGroup[]): string {
   return sectors
     .map((sector) => {
-      const rows = sector.holdings
+      const pills = sector.holdings
         .map(
           (holding: Holding) => `
-          <li>
+          <span class="pill">
             <b>${esc(holding.symbol)}</b>
-            <span>${esc(holding.name)}</span>
             <em style="color:${tone(holding.changePercent)}">${esc(formatPercent(holding.changePercent))}</em>
-            <small>${esc(formatWeight(holding.weight))}</small>
-          </li>`,
+            <small>${esc(holding.name)} · ${esc(formatWeight(holding.weight))}</small>
+          </span>`,
         )
         .join("");
       return `
-      <article class="card">
-        <header>
-          <strong>${esc(sector.zh)}</strong>
+      <article class="alloc-row">
+        <div class="alloc-side">
+          <i style="background:${sector.hex}"></i>
+          <div>
+            <strong>${esc(sector.zh)}</strong>
+            <em>${esc(sector.en)}</em>
+          </div>
           <b style="color:${sector.hex}">${esc(formatWeight(sector.weight))}</b>
-        </header>
-        <ul>${rows}</ul>
+        </div>
+        <div class="pills">${pills}</div>
       </article>`;
     })
     .join("");
@@ -320,11 +323,10 @@ function render(snapshot: Snapshot): string {
     .head span { margin-left: auto; color: var(--muted); font-size: 12px; }
     .sub, .hint, small { color: var(--muted); }
     .sub { margin: 0; font-size: 14px; }
-    .tiles, .sectors, .tape { display: grid; gap: 12px; }
+    .tiles, .tape { display: grid; gap: 12px; }
     .tiles { grid-template-columns: repeat(4, 1fr); }
-    .sectors { grid-template-columns: repeat(3, 1fr); }
     .tape { grid-template-columns: repeat(4, 1fr); }
-    .tile, .card, .panel, .mapwrap {
+    .tile, .panel, .mapwrap {
       background: #fff;
       border: 1px solid var(--line);
       border-radius: 18px;
@@ -337,11 +339,20 @@ function render(snapshot: Snapshot): string {
     .stat { margin: 8px 0 4px; font-family: Orbitron, "JetBrains Mono", sans-serif; font-weight: 700; font-size: clamp(26px, 3vw, 36px); letter-spacing: .03em; line-height: 1; }
     .mapwrap { padding: 10px; }
     .map { display: block; width: 100%; height: auto; }
-    .bar { display: flex; height: 16px; border-radius: 99px; overflow: hidden; background: #e7eaf2; }
-    .card { padding: 16px; }
-    .card header, .card li { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-    .card ul { list-style: none; margin: 10px 0 0; padding: 0; }
-    .card li { font-size: 13px; padding: 6px 0; border-top: 1px solid var(--line); }
+    .bar { display: flex; height: 36px; border-radius: 12px; overflow: hidden; background: #e7eaf2; }
+    .bar i { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; padding: 0 8px; color: #fff; font-style: normal; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .alloc { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+    .alloc-row { display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; box-shadow: 0 10px 30px rgba(26, 31, 54, .04); }
+    .alloc-side { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .alloc-side > i { width: 8px; height: 36px; border-radius: 99px; flex: none; }
+    .alloc-side strong { display: block; font-size: 16px; }
+    .alloc-side em { display: block; margin-top: 2px; color: var(--muted); font-style: normal; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .alloc-side b { margin-left: auto; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 20px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill { display: grid; grid-template-columns: auto auto; gap: 2px 12px; align-items: baseline; min-width: 148px; padding: 8px 12px; border-radius: 12px; background: #f4f6fb; }
+    .pill b, .pill em { font-family: "JetBrains Mono", ui-monospace, monospace; font-style: normal; font-weight: 700; }
+    .pill em { text-align: right; }
+    .pill small { grid-column: 1 / -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th { color: var(--muted); font-weight: 500; font-size: 12px; }
     th, td { text-align: right; padding: 12px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
@@ -359,7 +370,7 @@ function render(snapshot: Snapshot): string {
     footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
     @media (max-width: 900px) {
       .tiles, .tape { grid-template-columns: 1fr 1fr; }
-      .sectors { grid-template-columns: 1fr; }
+      .alloc-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -373,7 +384,7 @@ function render(snapshot: Snapshot): string {
     <section class="mapwrap">${mapBlocks(snapshot)}</section>
     <div class="head"><h2>板块配置</h2><span>红涨绿跌</span></div>
     <div class="bar">${sectorBar(snapshot.sectors)}</div>
-    <section class="sectors">${sectorCards(snapshot.sectors)}</section>
+    <section class="alloc">${sectorCards(snapshot.sectors)}</section>
     <div class="head"><h2>行情条</h2><span>大约每 5 分钟刷新</span></div>
     <section class="tape">${tape(snapshot)}</section>
     <div class="head"><h2>持仓明细</h2><span>按最新报价重估</span></div>
