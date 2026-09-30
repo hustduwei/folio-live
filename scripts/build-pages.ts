@@ -138,7 +138,7 @@ function sectorCards(sectors: SectorGroup[]): string {
           <li>
             <b>${esc(holding.symbol)}</b>
             <span>${esc(holding.name)}</span>
-            <em style="color:${tone(holding.pnl)}">${esc(formatPercent(holding.changePercent))}</em>
+            <em style="color:${tone(holding.changePercent)}">${esc(formatPercent(holding.changePercent))}</em>
             <small>${esc(formatWeight(holding.weight))}</small>
           </li>`,
         )
