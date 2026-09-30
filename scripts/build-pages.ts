@@ -13,6 +13,7 @@ import {
 } from "../src/lib/format";
 import { buildSnapshot } from "../src/lib/snapshot";
 import { tileColor } from "../src/lib/sectors";
+import { squarify } from "../src/lib/treemap";
 import type { Holding, SectorGroup, Snapshot } from "../src/lib/types";
 
 function esc(value: string): string {
@@ -59,32 +60,64 @@ function tiles(snapshot: Snapshot): string {
 function mapBlocks(snapshot: Snapshot): string {
   const net = Math.max(snapshot.totals.netValue, 1);
   const cash = snapshot.totals.cash ?? 0;
-  const blocks = [
-    ...snapshot.holdings.map((holding) => ({
-      label: holding.symbol,
-      sub: formatWeight((holding.marketValue / net) * 100),
+  const leaves = snapshot.holdings
+    .filter((holding) => holding.marketValue > 0)
+    .map((holding) => ({
+      id: holding.symbol,
       value: holding.marketValue,
+      label: holding.symbol,
+      weight: (holding.marketValue / net) * 100,
       color: tileColor(holding.symbol, "#334155", 0, 1),
-    })),
-  ];
+    }));
   if (cash > 0) {
-    blocks.push({
-      label: "现金",
-      sub: formatWeight(snapshot.totals.cashWeight),
+    leaves.push({
+      id: "CASH",
       value: cash,
+      label: "现金",
+      weight: snapshot.totals.cashWeight,
       color: "#8A94B0",
     });
   }
-  blocks.sort((a, b) => b.value - a.value);
-  return blocks
-    .map(
-      (block) => `
-      <div class="block" style="flex:${Math.max(block.value, 1)} 1 120px;background:${block.color}">
-        <strong>${esc(block.label)}</strong>
-        <span>${esc(block.sub)}</span>
-      </div>`,
-    )
+  if (!leaves.length) return "";
+
+  const width = 1000;
+  const height = 560;
+  const pad = 4;
+  const layout = squarify(
+    leaves.map((leaf) => ({ id: leaf.id, value: leaf.value })),
+    pad,
+    pad,
+    width - pad * 2,
+    height - pad * 2,
+  );
+  const shapes = layout
+    .map((rect) => {
+      const leaf = leaves.find((item) => item.id === rect.id);
+      if (!leaf) return "";
+      const gap = 4;
+      const x = rect.x + gap;
+      const y = rect.y + gap;
+      const w = Math.max(0, rect.w - gap * 2);
+      const h = Math.max(0, rect.h - gap * 2);
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const minSide = Math.min(w, h);
+      const compact = minSide < 70;
+      const tickerSize = compact
+        ? Math.max(12, Math.min(18, w / Math.max(leaf.label.length * 0.7, 2)))
+        : Math.max(16, Math.min(34, Math.min(w, h) * 0.22));
+      const pctSize = compact ? 11 : 14;
+      const twoLine = !compact && h > tickerSize + pctSize + 36;
+      const label = esc(leaf.label);
+      const weight = esc(formatWeight(leaf.weight));
+      const text = twoLine
+        ? `<text x="${cx.toFixed(1)}" y="${(cy - 6).toFixed(1)}" text-anchor="middle" fill="#fff" font-family="JetBrains Mono, ui-monospace, monospace" font-weight="700" font-size="${tickerSize.toFixed(1)}">${label}</text>
+           <text x="${cx.toFixed(1)}" y="${(cy + pctSize + 8).toFixed(1)}" text-anchor="middle" fill="#fff" font-family="JetBrains Mono, ui-monospace, monospace" font-weight="700" font-size="${pctSize}" opacity="0.86">${weight}</text>`
+        : `<text x="${cx.toFixed(1)}" y="${(cy + tickerSize * 0.35).toFixed(1)}" text-anchor="middle" fill="#fff" font-family="JetBrains Mono, ui-monospace, monospace" font-weight="700" font-size="${tickerSize.toFixed(1)}">${label}</text>`;
+      return `<g><title>${label} ${weight}</title><rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="12" fill="${leaf.color}"/>${text}</g>`;
+    })
     .join("");
+  return `<svg class="map" viewBox="0 0 ${width} ${height}" role="img" aria-label="持仓地图">${shapes}</svg>`;
 }
 
 function sectorBar(sectors: SectorGroup[]): string {
@@ -205,7 +238,9 @@ function capitalLedger(snapshot: Snapshot): string {
 }
 
 function tradeLedger(snapshot: Snapshot): string {
-  const trades = [...(snapshot.trades ?? [])].reverse();
+  const trades = [...(snapshot.trades ?? [])]
+    .sort((a, b) => Date.parse(b.executedAt) - Date.parse(a.executedAt))
+    .slice(0, 5);
   if (!trades.length) return `<li>还没有成交。</li>`;
   return trades
     .map(
@@ -300,10 +335,8 @@ function render(snapshot: Snapshot): string {
     .kicker { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 13px; font-weight: 500; color: var(--muted); }
     .kicker em { font-style: normal; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
     .stat { margin: 8px 0 4px; font-family: Orbitron, "JetBrains Mono", sans-serif; font-weight: 700; font-size: clamp(26px, 3vw, 36px); letter-spacing: .03em; line-height: 1; }
-    .mapwrap { padding: 14px; }
-    .map { display: flex; flex-wrap: wrap; gap: 8px; min-height: 320px; }
-    .block { min-height: 108px; border-radius: 16px; color: white; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; font-family: "JetBrains Mono", sans-serif; }
-    .block strong { font-size: 18px; letter-spacing: .04em; }
+    .mapwrap { padding: 10px; }
+    .map { display: block; width: 100%; height: auto; }
     .bar { display: flex; height: 16px; border-radius: 99px; overflow: hidden; background: #e7eaf2; }
     .card { padding: 16px; }
     .card header, .card li { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
@@ -313,7 +346,7 @@ function render(snapshot: Snapshot): string {
     th { color: var(--muted); font-weight: 500; font-size: 12px; }
     th, td { text-align: right; padding: 12px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
     th:first-child, td:first-child { text-align: left; }
-    td b, .block strong, .kicker em { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    td b, .kicker em { font-family: "JetBrains Mono", ui-monospace, monospace; }
     td small { display: block; color: var(--muted); font-family: "Noto Sans SC", "PingFang SC", sans-serif; }
     .panel { padding: 8px 16px 12px; overflow-x: auto; }
     .ledger { list-style: none; margin: 0; padding: 0; }
@@ -337,7 +370,7 @@ function render(snapshot: Snapshot): string {
     <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 更新于北京时间 ${esc(when)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
     <div class="head"><h2>持仓地图</h2><span>方块面积 = 仓位占比</span></div>
-    <section class="mapwrap"><div class="map">${mapBlocks(snapshot)}</div></section>
+    <section class="mapwrap">${mapBlocks(snapshot)}</section>
     <div class="head"><h2>板块配置</h2><span>红涨绿跌</span></div>
     <div class="bar">${sectorBar(snapshot.sectors)}</div>
     <section class="sectors">${sectorCards(snapshot.sectors)}</section>
@@ -349,7 +382,7 @@ function render(snapshot: Snapshot): string {
     <section class="tiles">${capitalTiles(snapshot)}</section>
     <div class="head"><h2>资金流水</h2></div>
     <section class="panel"><ul class="ledger">${capitalLedger(snapshot)}</ul></section>
-    <div class="head"><h2>成交记录</h2></div>
+    <div class="head"><h2>成交记录</h2><span>最近 5 笔</span></div>
     <section class="panel"><ul class="ledger">${tradeLedger(snapshot)}</ul></section>
     <footer>买入、卖出和提现发在对话里。网页大约每 5 分钟更新。红涨绿跌。</footer>
   </main>
@@ -397,12 +430,14 @@ function gate(payload: { salt: string; iv: string; data: string }): string {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f7f8fc; color: #1a1f36; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
-    form { width: min(420px, calc(100% - 32px)); background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 20px; padding: 28px 24px; box-shadow: 0 10px 30px rgba(26,31,54,.06); }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: #f7f8fc; color: #1a1f36; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+    form { width: min(420px, 100%); min-width: 0; margin: 0; overflow: hidden; background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 20px; padding: 28px 24px; box-shadow: 0 10px 30px rgba(26,31,54,.06); }
     h1 { margin: 0 0 8px; font-family: "Bricolage Grotesque", "Noto Sans SC", sans-serif; font-size: 36px; letter-spacing: -0.03em; }
     p { margin: 0 0 18px; color: #6b7280; }
-    input { width: 100%; height: 46px; border: 1px solid #d6dde6; border-radius: 12px; padding: 0 14px; font-size: 18px; }
-    button { width: 100%; height: 46px; margin-top: 12px; border: 0; border-radius: 12px; background: #172033; color: #fff; font-size: 16px; }
+    input, button { display: block; width: 100%; max-width: 100%; min-width: 0; margin-left: 0; margin-right: 0; }
+    input { height: 46px; border: 1px solid #d6dde6; border-radius: 12px; padding: 0 14px; font-size: 18px; }
+    button { height: 46px; margin-top: 12px; border: 0; border-radius: 12px; background: #172033; color: #fff; font-size: 16px; }
     .err { min-height: 22px; margin-top: 10px; color: #C41414; }
   </style>
 </head>
