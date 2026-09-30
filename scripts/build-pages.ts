@@ -1,3 +1,4 @@
+import { randomBytes, webcrypto } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -213,12 +214,108 @@ function render(snapshot: Snapshot): string {
 `;
 }
 
+function bytesToBase64(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString("base64");
+}
+
+async function encryptHtml(html: string, password: string): Promise<{ salt: string; iv: string; data: string }> {
+  const salt = randomBytes(16);
+  const iv = randomBytes(12);
+  const keyMaterial = await webcrypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"],
+  );
+  const key = await webcrypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 120000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt"],
+  );
+  const cipher = new Uint8Array(
+    await webcrypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(html)),
+  );
+  return { salt: bytesToBase64(salt), iv: bytesToBase64(iv), data: bytesToBase64(cipher) };
+}
+
+function gate(payload: { salt: string; iv: string; data: string }): string {
+  const packed = JSON.stringify(payload);
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>持仓全景图</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #eef1f4; color: #172033; font-family: "Songti SC", "Noto Serif SC", Georgia, serif; }
+    form { width: min(420px, calc(100% - 32px)); background: #fff; border-radius: 20px; padding: 28px 24px; box-shadow: 0 1px 0 rgba(15,23,42,.06); }
+    h1 { margin: 0 0 8px; font-size: 36px; }
+    p { margin: 0 0 18px; color: #64748b; font-family: "PingFang SC", sans-serif; }
+    input { width: 100%; height: 46px; border: 1px solid #d6dde6; border-radius: 12px; padding: 0 14px; font-size: 18px; }
+    button { width: 100%; height: 46px; margin-top: 12px; border: 0; border-radius: 12px; background: #172033; color: #fff; font-size: 16px; }
+    .err { min-height: 22px; margin-top: 10px; color: #C41414; font-family: "PingFang SC", sans-serif; }
+  </style>
+</head>
+<body>
+  <form id="lock">
+    <h1>持仓全景图</h1>
+    <p>输入密码后查看。</p>
+    <input id="password" type="password" inputmode="numeric" autocomplete="current-password" placeholder="密码" autofocus />
+    <button type="submit">进入</button>
+    <p class="err" id="err"></p>
+  </form>
+  <script id="vault" type="application/json">${packed}</script>
+  <script>
+    const payload = JSON.parse(document.getElementById("vault").textContent);
+    const form = document.getElementById("lock");
+    const input = document.getElementById("password");
+    const err = document.getElementById("err");
+    function b64(value) {
+      const bin = atob(value);
+      return Uint8Array.from(bin, (char) => char.charCodeAt(0));
+    }
+    async function unlock(password) {
+      const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+      const key = await crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: b64(payload.salt), iterations: 120000, hash: "SHA-256" },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["decrypt"],
+      );
+      const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(payload.iv) }, key, b64(payload.data));
+      const html = new TextDecoder().decode(plain);
+      sessionStorage.setItem("folio-live-password", password);
+      document.open();
+      document.write(html);
+      document.close();
+    }
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      err.textContent = "正在打开…";
+      unlock(input.value).catch(() => {
+        err.textContent = "密码不对";
+      });
+    });
+    const saved = sessionStorage.getItem("folio-live-password");
+    if (saved) unlock(saved).catch(() => sessionStorage.removeItem("folio-live-password"));
+  </script>
+</body>
+</html>`;
+}
+
 async function main(): Promise<void> {
+  const password = process.env.PAGE_PASSWORD;
+  if (!password) throw new Error("缺少 PAGE_PASSWORD");
   const snapshot = await buildSnapshot("fresh");
   const outDir = path.join(process.cwd(), "docs");
   await mkdir(outDir, { recursive: true });
-  await writeFile(path.join(outDir, "index.html"), render(snapshot), "utf8");
-  console.log(`wrote docs/index.html ${snapshot.holdings.length} holdings`);
+  const payload = await encryptHtml(render(snapshot), password);
+  await writeFile(path.join(outDir, "index.html"), gate(payload), "utf8");
+  console.log(`wrote locked docs/index.html ${snapshot.holdings.length} holdings`);
 }
 
 void main();

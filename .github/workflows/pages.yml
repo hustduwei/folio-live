@@ -27,6 +27,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run pages
+        env:
+          PAGE_PASSWORD: ${{ secrets.PAGE_PASSWORD }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
