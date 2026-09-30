@@ -2,8 +2,10 @@ import { randomBytes, webcrypto } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  formatCnyWhole,
   formatPercent,
   formatShares,
+  formatUsdPrecise,
   formatSignedUsdWhole,
   formatUsd,
   formatUsdWhole,
@@ -142,6 +144,96 @@ function table(holdings: Holding[]): string {
   </table>`;
 }
 
+function whenLabel(iso: string, withTime = false): string {
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "Asia/Shanghai",
+    month: "numeric",
+    day: "numeric",
+    hourCycle: "h23",
+  };
+  if (withTime) {
+    options.hour = "2-digit";
+    options.minute = "2-digit";
+  }
+  return new Intl.DateTimeFormat("zh-CN", options).format(new Date(iso));
+}
+
+function capitalTiles(snapshot: Snapshot): string {
+  const capital = snapshot.capital;
+  if (!capital) return "";
+  const deposits = capital.events.filter((row) => row.kind === "deposit").length;
+  const withdrawals = capital.events.filter((row) => row.kind === "withdraw").length;
+  const cards = [
+    ["原始本金", "In", formatUsdWhole(capital.principalUsd), "#0369A1", `${formatCnyWhole(capital.principalCny)} · ${deposits} 笔入金`],
+    ["提现", "Out", formatUsdWhole(capital.withdrawnUsd), "#B45309", `${formatCnyWhole(capital.withdrawnCny)} · ${withdrawals} 笔`],
+    ["净投入", "Basis", formatUsdWhole(capital.netCapitalUsd), "#5B6478", "入金 − 提现"],
+    [
+      "账户收益率",
+      "All",
+      formatPercent(capital.vsCapitalPercent),
+      tone(capital.vsCapital),
+      `${formatSignedUsdWhole(capital.vsCapital)} · 净投入 ${formatUsdWhole(capital.netCapitalUsd)}`,
+    ],
+  ];
+  return cards
+    .map(
+      ([label, en, value, color, hint]) => `
+      <article class="tile">
+        <p class="kicker"><i style="background:${color}"></i>${esc(label)} <span>${esc(en)}</span></p>
+        <p class="stat" style="color:${color}">${esc(value)}</p>
+        <p class="hint">${esc(hint)}</p>
+      </article>`,
+    )
+    .join("");
+}
+
+function capitalLedger(snapshot: Snapshot): string {
+  const events = [...(snapshot.capital?.events ?? [])].reverse();
+  if (!events.length) return `<li>还没有资金记录。</li>`;
+  return events
+    .map(
+      (event) => `
+      <li>
+        <span class="tag ${event.kind === "deposit" ? "in" : "out"}">${event.kind === "deposit" ? "入金" : "提现"}</span>
+        <b>${esc(formatCnyWhole(event.cny))}</b>
+        <span>÷ ${esc(String(event.fx))} = ${esc(formatUsd(event.usd))}</span>
+        <span>${esc(whenLabel(event.executedAt))}</span>
+        ${event.note ? `<span>${esc(event.note)}</span>` : ""}
+      </li>`,
+    )
+    .join("");
+}
+
+function tradeLedger(snapshot: Snapshot): string {
+  const trades = [...(snapshot.trades ?? [])].reverse();
+  if (!trades.length) return `<li>还没有成交。</li>`;
+  return trades
+    .map(
+      (trade) => `
+      <li>
+        <span class="tag ${trade.side === "buy" ? "buy" : "sell"}">${trade.side === "buy" ? "买" : "卖"}</span>
+        <b>${esc(trade.symbol)}</b>
+        <span>${esc(formatShares(trade.shares))} 股 @ ${esc(formatUsdPrecise(trade.price))}</span>
+        <span>${esc(whenLabel(trade.executedAt, true))}</span>
+        ${trade.note ? `<span>${esc(trade.note)}</span>` : ""}
+      </li>`,
+    )
+    .join("");
+}
+
+function tape(snapshot: Snapshot): string {
+  return (snapshot.watchlist ?? [])
+    .map(
+      (quote) => `
+      <article class="tile">
+        <p class="kicker">${esc(quote.symbol)}</p>
+        <p class="stat" style="font-size:22px">${esc(formatUsdPrecise(quote.price))}</p>
+        <p class="hint" style="color:${tone(quote.changePercent)}">${esc(formatPercent(quote.changePercent))}</p>
+      </article>`,
+    )
+    .join("");
+}
+
 function render(snapshot: Snapshot): string {
   const year = snapshot.year;
   const capital = snapshot.capital;
@@ -188,9 +280,17 @@ function render(snapshot: Snapshot): string {
     td small { display: block; }
     .panel { padding: 8px 12px 16px; margin-top: 16px; overflow-x: auto; }
     h2 { font-size: 18px; margin: 22px 0 8px; }
+    .ledger { list-style: none; margin: 0; padding: 0; }
+    .ledger li { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; padding: 10px 4px; border-bottom: 1px solid #e2e8f0; font-family: "Avenir Next", "PingFang SC", sans-serif; font-size: 14px; }
+    .tag { border-radius: 99px; padding: 2px 8px; font-size: 12px; }
+    .tag.in { background: #0369A11f; color: #0369A1; }
+    .tag.out { background: #B453091f; color: #B45309; }
+    .tag.buy { background: #C414141f; color: #C41414; }
+    .tag.sell { background: #16A34A1f; color: #16A34A; }
+    .tape { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
     @media (max-width: 800px) {
       .tiles, .sectors { grid-template-columns: 1fr 1fr; }
-      .sectors { grid-template-columns: 1fr; }
+      .sectors, .tape { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -205,8 +305,17 @@ function render(snapshot: Snapshot): string {
     <h2>板块配置</h2>
     <div class="bar">${sectorBar(snapshot.sectors)}</div>
     <section class="sectors">${sectorCards(snapshot.sectors)}</section>
+    <h2>行情条</h2>
+    <section class="tape">${tape(snapshot)}</section>
     <h2>持仓明细</h2>
     <section class="panel">${table(snapshot.holdings)}</section>
+    <h2>资金</h2>
+    <p class="sub">入金和提现按当时人民币汇率折成美元</p>
+    <section class="tiles">${capitalTiles(snapshot)}</section>
+    <h2>资金流水</h2>
+    <section class="panel"><ul class="ledger">${capitalLedger(snapshot)}</ul></section>
+    <h2>成交记录</h2>
+    <section class="panel"><ul class="ledger">${tradeLedger(snapshot)}</ul></section>
     <p class="sub">买入、卖出和提现仍然发在对话里。更新后这个网页会在下一次自动刷新时变过来。红涨绿跌。</p>
   </main>
 </body>
