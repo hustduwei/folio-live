@@ -47,8 +47,8 @@ function tiles(snapshot: Snapshot): string {
   return cards
     .map(
       ([label, en, value, color, hint]) => `
-      <article class="tile">
-        <p class="kicker"><i style="background:${color}"></i>${esc(label)} <span>${esc(en)}</span></p>
+      <article class="tile" style="--c:${color}">
+        <p class="kicker">${esc(label)} <em>${esc(en)}</em></p>
         <p class="stat" style="color:${color}">${esc(value)}</p>
         <p class="hint">${esc(hint)}</p>
       </article>`,
@@ -178,8 +178,8 @@ function capitalTiles(snapshot: Snapshot): string {
   return cards
     .map(
       ([label, en, value, color, hint]) => `
-      <article class="tile">
-        <p class="kicker"><i style="background:${color}"></i>${esc(label)} <span>${esc(en)}</span></p>
+      <article class="tile" style="--c:${color}">
+        <p class="kicker">${esc(label)} <em>${esc(en)}</em></p>
         <p class="stat" style="color:${color}">${esc(value)}</p>
         <p class="hint">${esc(hint)}</p>
       </article>`,
@@ -225,7 +225,7 @@ function tape(snapshot: Snapshot): string {
   return (snapshot.watchlist ?? [])
     .map(
       (quote) => `
-      <article class="tile">
+      <article class="tile" style="--c:${tone(quote.changePercent)}">
         <p class="kicker">${esc(quote.symbol)}</p>
         <p class="stat" style="font-size:22px">${esc(formatUsdPrecise(quote.price))}</p>
         <p class="hint" style="color:${tone(quote.changePercent)}">${esc(formatPercent(quote.changePercent))}</p>
@@ -252,71 +252,106 @@ function render(snapshot: Snapshot): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>持仓全景图</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@600;700&display=swap" rel="stylesheet" />
   <style>
-    :root { color-scheme: light; }
+    :root { color-scheme: light; --ink: #1a1f36; --muted: #6b7280; --line: rgba(0,0,0,.08); }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #eef1f4; color: #172033; font-family: "Songti SC", "Noto Serif SC", Georgia, serif; }
-    main { max-width: 1180px; margin: 0 auto; padding: 28px 20px 64px; }
-    h1 { margin: 8px 0; font-size: clamp(36px, 6vw, 58px); letter-spacing: -0.03em; }
-    .sub, .hint, small, .kicker span { color: #64748b; font-family: "Avenir Next", "PingFang SC", sans-serif; }
-    .tiles, .sectors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-    .tile, .card, .panel { background: #fff; border-radius: 18px; box-shadow: 0 1px 0 rgba(15,23,42,.06); }
-    .tile { padding: 16px 18px 14px; }
-    .kicker { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 13px; }
-    .kicker i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
-    .stat { margin: 10px 0 4px; font-family: "DIN Alternate", "Avenir Next", sans-serif; font-size: clamp(28px, 4vw, 40px); letter-spacing: .02em; }
-    .map { display: flex; flex-wrap: wrap; gap: 8px; min-height: 280px; margin: 18px 0; }
-    .block { min-height: 92px; border-radius: 16px; color: white; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; }
-    .block span, .bar i { font-family: "Avenir Next", sans-serif; }
-    .bar { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: #e2e8f0; }
-    .sectors { grid-template-columns: repeat(3, 1fr); margin-top: 14px; }
-    .card { padding: 14px 16px; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background-color: #f7f8fc;
+      background-image: linear-gradient(rgba(0,0,0,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.035) 1px, transparent 1px);
+      background-size: 42px 42px;
+    }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 72px; }
+    .brand { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; letter-spacing: .08em; color: var(--muted); }
+    .brand i { width: 8px; height: 8px; border-radius: 99px; background: #16a34a; display: inline-block; }
+    h1 {
+      margin: 10px 0 6px;
+      font-family: "Bricolage Grotesque", "Noto Sans SC", sans-serif;
+      font-size: clamp(40px, 6vw, 64px);
+      line-height: .95;
+      letter-spacing: -0.03em;
+      background: linear-gradient(95deg, #1a1f36 20%, #4b5683 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    h2 { margin: 0; font-family: "Bricolage Grotesque", "Noto Sans SC", sans-serif; font-size: 22px; letter-spacing: -0.02em; }
+    .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 28px 0 12px; }
+    .head span { margin-left: auto; color: var(--muted); font-size: 12px; }
+    .sub, .hint, small { color: var(--muted); }
+    .sub { margin: 0; font-size: 14px; }
+    .tiles, .sectors, .tape { display: grid; gap: 12px; }
+    .tiles { grid-template-columns: repeat(4, 1fr); }
+    .sectors { grid-template-columns: repeat(3, 1fr); }
+    .tape { grid-template-columns: repeat(4, 1fr); }
+    .tile, .card, .panel, .mapwrap {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(26, 31, 54, .04);
+    }
+    .tile { position: relative; overflow: hidden; padding: 16px 18px 14px; }
+    .tile::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c, #1a1f36); }
+    .kicker { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 13px; font-weight: 500; color: var(--muted); }
+    .kicker em { font-style: normal; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+    .stat { margin: 8px 0 4px; font-family: Orbitron, "JetBrains Mono", sans-serif; font-weight: 700; font-size: clamp(26px, 3vw, 36px); letter-spacing: .03em; line-height: 1; }
+    .mapwrap { padding: 14px; }
+    .map { display: flex; flex-wrap: wrap; gap: 8px; min-height: 320px; }
+    .block { min-height: 108px; border-radius: 16px; color: white; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; font-family: "JetBrains Mono", sans-serif; }
+    .block strong { font-size: 18px; letter-spacing: .04em; }
+    .bar { display: flex; height: 16px; border-radius: 99px; overflow: hidden; background: #e7eaf2; }
+    .card { padding: 16px; }
     .card header, .card li { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-    .card ul { list-style: none; margin: 8px 0 0; padding: 0; }
-    .card li { font-size: 13px; padding: 4px 0; font-family: "Avenir Next", "PingFang SC", sans-serif; }
-    table { width: 100%; border-collapse: collapse; font-family: "Avenir Next", "PingFang SC", sans-serif; font-size: 14px; }
-    th, td { text-align: right; padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }
+    .card ul { list-style: none; margin: 10px 0 0; padding: 0; }
+    .card li { font-size: 13px; padding: 6px 0; border-top: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { color: var(--muted); font-weight: 500; font-size: 12px; }
+    th, td { text-align: right; padding: 12px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
     th:first-child, td:first-child { text-align: left; }
-    td small { display: block; }
-    .panel { padding: 8px 12px 16px; margin-top: 16px; overflow-x: auto; }
-    h2 { font-size: 18px; margin: 22px 0 8px; }
+    td b, .block strong, .kicker em { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    td small { display: block; color: var(--muted); font-family: "Noto Sans SC", "PingFang SC", sans-serif; }
+    .panel { padding: 8px 16px 12px; overflow-x: auto; }
     .ledger { list-style: none; margin: 0; padding: 0; }
-    .ledger li { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; padding: 10px 4px; border-bottom: 1px solid #e2e8f0; font-family: "Avenir Next", "PingFang SC", sans-serif; font-size: 14px; }
-    .tag { border-radius: 99px; padding: 2px 8px; font-size: 12px; }
+    .ledger li { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 12px 4px; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .tag { border-radius: 99px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
     .tag.in { background: #0369A11f; color: #0369A1; }
     .tag.out { background: #B453091f; color: #B45309; }
     .tag.buy { background: #C414141f; color: #C41414; }
     .tag.sell { background: #16A34A1f; color: #16A34A; }
-    .tape { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-    @media (max-width: 800px) {
-      .tiles, .sectors { grid-template-columns: 1fr 1fr; }
-      .sectors, .tape { grid-template-columns: 1fr; }
+    footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    @media (max-width: 900px) {
+      .tiles, .tape { grid-template-columns: 1fr 1fr; }
+      .sectors { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <main>
-    <p class="sub">美股持仓 · 网页版 · 报价更新于北京时间 ${esc(when)} · 大约每 5 分钟自动刷新</p>
+    <p class="brand"><i></i>美股持仓 · 实时看板</p>
     <h1>持仓全景图</h1>
-    <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)}</p>
+    <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 更新于北京时间 ${esc(when)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
-    <h2>持仓地图</h2>
-    <section class="map">${mapBlocks(snapshot)}</section>
-    <h2>板块配置</h2>
+    <div class="head"><h2>持仓地图</h2><span>方块面积 = 仓位占比</span></div>
+    <section class="mapwrap"><div class="map">${mapBlocks(snapshot)}</div></section>
+    <div class="head"><h2>板块配置</h2><span>红涨绿跌</span></div>
     <div class="bar">${sectorBar(snapshot.sectors)}</div>
     <section class="sectors">${sectorCards(snapshot.sectors)}</section>
-    <h2>行情条</h2>
+    <div class="head"><h2>行情条</h2><span>大约每 5 分钟刷新</span></div>
     <section class="tape">${tape(snapshot)}</section>
-    <h2>持仓明细</h2>
+    <div class="head"><h2>持仓明细</h2><span>按最新报价重估</span></div>
     <section class="panel">${table(snapshot.holdings)}</section>
-    <h2>资金</h2>
-    <p class="sub">入金和提现按当时人民币汇率折成美元</p>
+    <div class="head"><h2>资金</h2><span>入金和提现按当时汇率折成美元</span></div>
     <section class="tiles">${capitalTiles(snapshot)}</section>
-    <h2>资金流水</h2>
+    <div class="head"><h2>资金流水</h2></div>
     <section class="panel"><ul class="ledger">${capitalLedger(snapshot)}</ul></section>
-    <h2>成交记录</h2>
+    <div class="head"><h2>成交记录</h2></div>
     <section class="panel"><ul class="ledger">${tradeLedger(snapshot)}</ul></section>
-    <p class="sub">买入、卖出和提现仍然发在对话里。更新后这个网页会在下一次自动刷新时变过来。红涨绿跌。</p>
+    <footer>买入、卖出和提现发在对话里。网页大约每 5 分钟更新。红涨绿跌。</footer>
   </main>
 </body>
 </html>
@@ -358,14 +393,17 @@ function gate(payload: { salt: string; iv: string; data: string }): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>持仓全景图</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #eef1f4; color: #172033; font-family: "Songti SC", "Noto Serif SC", Georgia, serif; }
-    form { width: min(420px, calc(100% - 32px)); background: #fff; border-radius: 20px; padding: 28px 24px; box-shadow: 0 1px 0 rgba(15,23,42,.06); }
-    h1 { margin: 0 0 8px; font-size: 36px; }
-    p { margin: 0 0 18px; color: #64748b; font-family: "PingFang SC", sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f7f8fc; color: #1a1f36; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+    form { width: min(420px, calc(100% - 32px)); background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 20px; padding: 28px 24px; box-shadow: 0 10px 30px rgba(26,31,54,.06); }
+    h1 { margin: 0 0 8px; font-family: "Bricolage Grotesque", "Noto Sans SC", sans-serif; font-size: 36px; letter-spacing: -0.03em; }
+    p { margin: 0 0 18px; color: #6b7280; }
     input { width: 100%; height: 46px; border: 1px solid #d6dde6; border-radius: 12px; padding: 0 14px; font-size: 18px; }
     button { width: 100%; height: 46px; margin-top: 12px; border: 0; border-radius: 12px; background: #172033; color: #fff; font-size: 16px; }
-    .err { min-height: 22px; margin-top: 10px; color: #C41414; font-family: "PingFang SC", sans-serif; }
+    .err { min-height: 22px; margin-top: 10px; color: #C41414; }
   </style>
 </head>
 <body>
