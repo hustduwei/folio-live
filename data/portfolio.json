@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "cash": 3519.32,
+  "cash": 6603.32,
   "capital": [
     {
       "id": "cap-principal",
@@ -175,6 +175,28 @@
       "price": 146.5,
       "executedAt": "2026-09-29T05:39:46.281Z",
       "affectsCash": true
+    },
+    {
+      "id": "7c1a0e44-6b2d-4f18-9a55-1d0e8c3b7a21",
+      "symbol": "LITE",
+      "name": "Lumentum 控股",
+      "side": "sell",
+      "shares": 2,
+      "price": 1020,
+      "executedAt": "2026-10-01T13:55:00.000Z",
+      "affectsCash": true,
+      "note": "卖出所得计入现金"
+    },
+    {
+      "id": "b84f2c91-3e57-4a06-8d12-6f9c0a1e5b73",
+      "symbol": "LITE",
+      "name": "Lumentum 控股",
+      "side": "sell",
+      "shares": 1,
+      "price": 1044,
+      "executedAt": "2026-10-01T14:28:00.000Z",
+      "affectsCash": true,
+      "note": "卖出所得计入现金"
     }
   ]
 }
