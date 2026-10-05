@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "cash": 6813.32,
+  "cash": 5733.32,
   "capital": [
     {
       "id": "cap-principal",
@@ -228,6 +228,16 @@
       "executedAt": "2026-10-02T15:14:00.000Z",
       "affectsCash": true,
       "note": "卖出所得计入现金"
+    },
+    {
+      "id": "f1c6a904-8d37-4e52-b6a1-3c9e0d7b5f28",
+      "symbol": "RKLB",
+      "name": "Rocket Lab",
+      "side": "buy",
+      "shares": 15,
+      "price": 72,
+      "executedAt": "2026-10-05T23:56:00.000Z",
+      "affectsCash": true
     }
   ]
 }
