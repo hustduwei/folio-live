@@ -64,7 +64,7 @@ function nyLocalToUtc(year: number, month: number, day: number, hour: number, mi
   return new Date(utc);
 }
 
-/** Most recent 20:00 America/New_York. Prices after this instant belong to the next day. */
+/** Most recent 20:00 America/New_York. Trades after this instant belong to the next day. */
 export function lastSettlementAt(now = new Date()): Date {
   const ny = nyParts(now);
   const todayCutoff = nyLocalToUtc(Number(ny.year), Number(ny.month), Number(ny.day), DAY_CUTOFF_HOUR, 0);

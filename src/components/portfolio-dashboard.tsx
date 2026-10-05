@@ -174,7 +174,7 @@ export function PortfolioDashboard({
               className={cn("font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none", signedClass(totals.dayPnl))}
             />
           }
-          hint={`${formatPercent(totals.dayPnlPercent)} · 美东20:00结算`}
+          hint={`${formatPercent(totals.dayPnlPercent)} · 较上一交易日收盘`}
           tone={totals.dayPnl}
         />
         <StatTile

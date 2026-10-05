@@ -15,6 +15,7 @@ import type {
   YearMark,
   YearSummary,
 } from "./types";
+import { lastSettlementAt } from "./market";
 import { normalizeSymbol } from "./quotes";
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -160,8 +161,11 @@ export function deriveHoldings(trades: Trade[], quotes: Quote[]): Holding[] {
     const marketValue = price * lot.shares;
     const pnl = marketValue - lot.cost;
     const pnlPercent = lot.cost > 0 ? (pnl / lot.cost) * 100 : 0;
-    const dayPnl = (price - previousClose) * lot.shares;
-    const dayPnlPercent = previousClose > 0 ? ((price - previousClose) / previousClose) * 100 : 0;
+    const day = quote
+      ? positionDayStats(trades, symbol, price, previousClose)
+      : { dayPnl: 0, dayPnlPercent: 0, base: 0 };
+    const dayPnl = day.dayPnl;
+    const dayPnlPercent = day.dayPnlPercent;
 
     holdings.push({
       symbol,
@@ -192,6 +196,53 @@ export function deriveHoldings(trades: Trade[], quotes: Quote[]): Holding[] {
 
   holdings.sort((a, b) => b.marketValue - a.marketValue);
   return holdings;
+}
+
+export function positionDayStats(
+  trades: Trade[],
+  symbol: string,
+  price: number,
+  previousClose: number,
+  now = new Date(),
+): { dayPnl: number; dayPnlPercent: number; base: number } {
+  const settlementMs = lastSettlementAt(now).getTime();
+  const target = normalizeSymbol(symbol);
+  const prior: Trade[] = [];
+  let buyNotional = 0;
+  let sellNotional = 0;
+  const sameSymbol: Trade[] = [];
+  for (const trade of trades) {
+    if (normalizeSymbol(trade.symbol) !== target) continue;
+    sameSymbol.push(trade);
+    const at = Date.parse(trade.executedAt);
+    if (!Number.isFinite(at) || at < settlementMs) {
+      prior.push(trade);
+      continue;
+    }
+    const notional = trade.shares * trade.price;
+    if (trade.side === "sell") sellNotional += notional;
+    else buyNotional += notional;
+  }
+  const sharesAtCutoff = heldShares(prior, target);
+  const sharesNow = heldShares(sameSymbol, target);
+  const dayPnl = price * sharesNow - previousClose * sharesAtCutoff + sellNotional - buyNotional;
+  const base = previousClose * sharesAtCutoff + buyNotional;
+  return { dayPnl, dayPnlPercent: base > 0 ? (dayPnl / base) * 100 : 0, base };
+}
+
+export function accountDayPnl(trades: Trade[], quotes: Quote[], now = new Date()): { pnl: number; percent: number } {
+  const quoteMap = new Map(quotes.map((quote) => [normalizeSymbol(quote.symbol), quote]));
+  const symbols = new Set(trades.map((trade) => normalizeSymbol(trade.symbol)));
+  let pnl = 0;
+  let base = 0;
+  for (const symbol of symbols) {
+    const quote = quoteMap.get(symbol);
+    if (!quote || !Number.isFinite(quote.price) || !Number.isFinite(quote.previousClose)) continue;
+    const day = positionDayStats(trades, symbol, quote.price, quote.previousClose, now);
+    pnl += day.dayPnl;
+    base += day.base;
+  }
+  return { pnl, percent: base > 0 ? (pnl / base) * 100 : 0 };
 }
 
 export function summarize(holdings: Holding[], cash = 0): PortfolioTotals {

@@ -1,6 +1,6 @@
 import { WATCHLIST } from "./aliases";
 import { getMarketClock } from "./market";
-import { deriveHoldings, readPortfolio, summarize, summarizeCapital, summarizeYear } from "./portfolio";
+import { accountDayPnl, deriveHoldings, readPortfolio, summarize, summarizeCapital, summarizeYear } from "./portfolio";
 import { fetchQuotes, normalizeSymbol } from "./quotes";
 import { attachCashSector, groupBySector } from "./sectors";
 import type { Snapshot } from "./types";
@@ -40,6 +40,9 @@ async function assemble(maxWaitMs?: number): Promise<Snapshot> {
 
   const holdings = deriveHoldings(portfolio.trades, quotes);
   const totals = summarize(holdings, portfolio.cash);
+  const day = accountDayPnl(portfolio.trades, quotes);
+  totals.dayPnl = day.pnl;
+  totals.dayPnlPercent = day.percent;
   const snapshot: Snapshot = {
     fetchedAt: new Date().toISOString(),
     market: getMarketClock(),

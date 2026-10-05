@@ -239,10 +239,11 @@ function closeAtOrBefore(bars: ChartBar, settlementSec: number): number | null {
   for (let i = 0; i < timestamps.length; i += 1) {
     const ts = timestamps[i];
     const close = closes[i];
-    if (ts == null || ts > settlementSec) continue;
-    if (typeof close !== "number" || !Number.isFinite(close)) continue;
-    if (ts >= bestTs) {
-      bestTs = ts;
+    if (ts == null || typeof close !== "number" || !Number.isFinite(close)) continue;
+    const sessionClose = ts + 6.5 * 60 * 60;
+    if (sessionClose > settlementSec) continue;
+    if (sessionClose >= bestTs) {
+      bestTs = sessionClose;
       best = close;
     }
   }
@@ -253,7 +254,7 @@ async function settlementPrint(symbol: string, settlementSec: number): Promise<n
   const hosts = ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"];
   for (const host of hosts) {
     try {
-      const url = `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=5d&includePrePost=true`;
+      const url = `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1mo`;
       const payload = await yahooJson<{
         chart?: {
           result?: Array<{
