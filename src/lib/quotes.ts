@@ -1,4 +1,5 @@
 import { WATCHLIST } from "./aliases";
+import { lastSettlementAt } from "./market";
 import type { Quote, SearchHit } from "./types";
 
 const YAHOO_UA =
@@ -216,9 +217,96 @@ async function loadQuotes(unique: string[]): Promise<Quote[]> {
     );
   }
 
-  return unique
+  const quotes = unique
     .map((symbol) => bySymbol.get(symbol) ?? lastQuotes.get(symbol))
     .filter((quote): quote is Quote => Boolean(quote));
+  return applySettlementBaselines(quotes);
+}
+
+type ChartBar = {
+  timestamp?: number[];
+  close?: Array<number | null>;
+};
+
+const BASELINE_CACHE_MS = 5 * 60 * 1000;
+let baselineCache: { settlement: number; until: number; prices: Map<string, number> } | null = null;
+
+function closeAtOrBefore(bars: ChartBar, settlementSec: number): number | null {
+  const timestamps = bars.timestamp ?? [];
+  const closes = bars.close ?? [];
+  let bestTs = -1;
+  let best: number | null = null;
+  for (let i = 0; i < timestamps.length; i += 1) {
+    const ts = timestamps[i];
+    const close = closes[i];
+    if (ts == null || ts > settlementSec) continue;
+    if (typeof close !== "number" || !Number.isFinite(close)) continue;
+    if (ts >= bestTs) {
+      bestTs = ts;
+      best = close;
+    }
+  }
+  return best;
+}
+
+async function settlementPrint(symbol: string, settlementSec: number): Promise<number | null> {
+  const hosts = ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"];
+  for (const host of hosts) {
+    try {
+      const url = `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=5d&includePrePost=true`;
+      const payload = await yahooJson<{
+        chart?: {
+          result?: Array<{
+            timestamp?: number[];
+            indicators?: { quote?: Array<{ close?: Array<number | null> }> };
+          }>;
+        };
+      }>(url);
+      const result = payload.chart?.result?.[0];
+      if (!result) continue;
+      const price = closeAtOrBefore(
+        { timestamp: result.timestamp, close: result.indicators?.quote?.[0]?.close },
+        settlementSec,
+      );
+      if (price != null) return price;
+    } catch {
+      // try the other host
+    }
+  }
+  return null;
+}
+
+async function applySettlementBaselines(quotes: Quote[]): Promise<Quote[]> {
+  if (quotes.length === 0) return quotes;
+  const settlement = lastSettlementAt();
+  const settlementSec = Math.floor(settlement.getTime() / 1000);
+  const now = Date.now();
+  const cached =
+    baselineCache && baselineCache.settlement === settlement.getTime() && baselineCache.until > now
+      ? baselineCache.prices
+      : new Map<string, number>();
+  const missing = quotes.map((quote) => quote.symbol).filter((symbol) => !cached.has(symbol));
+  if (missing.length > 0) {
+    const found = await Promise.all(
+      missing.map(async (symbol) => [symbol, await settlementPrint(symbol, settlementSec)] as const),
+    );
+    for (const [symbol, price] of found) {
+      if (price != null) cached.set(symbol, price);
+    }
+    baselineCache = { settlement: settlement.getTime(), until: now + BASELINE_CACHE_MS, prices: cached };
+  }
+
+  return quotes.map((quote) => {
+    const baseline = cached.get(quote.symbol);
+    if (baseline == null || baseline === 0) return quote;
+    const change = quote.price - baseline;
+    return {
+      ...quote,
+      previousClose: baseline,
+      change,
+      changePercent: (change / baseline) * 100,
+    };
+  });
 }
 
 export async function fetchWatchlistQuotes(extra: string[] = []): Promise<Quote[]> {

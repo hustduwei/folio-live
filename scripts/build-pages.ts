@@ -35,7 +35,7 @@ function tiles(snapshot: Snapshot): string {
   const cash = totals.cash ?? 0;
   const cards = [
     ["净资产", "Net", formatUsdWhole(totals.netValue), "#0369A1", `股票 ${formatUsdWhole(totals.marketValue)}`],
-    ["今日", "Day", formatSignedUsdWhole(totals.dayPnl), tone(totals.dayPnl), formatPercent(totals.dayPnlPercent)],
+    ["今日", "Day", formatSignedUsdWhole(totals.dayPnl), tone(totals.dayPnl), `${formatPercent(totals.dayPnlPercent)} · 美东20:00结算`],
     [
       "今年收益率",
       "YTD",

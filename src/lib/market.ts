@@ -51,6 +51,28 @@ export function getMarketClock(date = new Date()): MarketClock {
   return { state, label: labels[state], nyTime, nyDate };
 }
 
+const DAY_CUTOFF_HOUR = 20;
+
+function nyLocalToUtc(year: number, month: number, day: number, hour: number, minute: number): Date {
+  const target = Date.UTC(year, month - 1, day, hour, minute, 0);
+  let utc = target;
+  for (let i = 0; i < 3; i += 1) {
+    const ny = nyParts(new Date(utc));
+    const wall = Date.UTC(Number(ny.year), Number(ny.month) - 1, Number(ny.day), ny.hour, ny.minute, ny.second);
+    utc = target - (wall - utc);
+  }
+  return new Date(utc);
+}
+
+/** Most recent 20:00 America/New_York. Prices after this instant belong to the next day. */
+export function lastSettlementAt(now = new Date()): Date {
+  const ny = nyParts(now);
+  const todayCutoff = nyLocalToUtc(Number(ny.year), Number(ny.month), Number(ny.day), DAY_CUTOFF_HOUR, 0);
+  if (now.getTime() >= todayCutoff.getTime()) return todayCutoff;
+  const yesterday = nyParts(new Date(todayCutoff.getTime() - 36 * 60 * 60 * 1000));
+  return nyLocalToUtc(Number(yesterday.year), Number(yesterday.month), Number(yesterday.day), DAY_CUTOFF_HOUR, 0);
+}
+
 export const QUOTE_POLL_MS = 3_000;
 
 export function pollIntervalMs(): number {
