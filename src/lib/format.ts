@@ -24,6 +24,14 @@ export function formatUsd(value: number, digits = 2): string {
   }).format(value);
 }
 
+export function formatPoints(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function formatUsdPrecise(value: number): string {
   if (!Number.isFinite(value)) return "—";
   const abs = Math.abs(value);

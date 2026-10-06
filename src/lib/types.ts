@@ -152,6 +152,7 @@ export type Snapshot = {
   holdings: Holding[];
   sectors: SectorGroup[];
   watchlist: Quote[];
+  indices: Quote[];
   trades: Trade[];
   capital: CapitalSummary;
   year: YearSummary | null;

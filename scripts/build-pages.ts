@@ -10,7 +10,9 @@ import {
   formatUsd,
   formatUsdWhole,
   formatWeight,
+  formatPoints,
 } from "../src/lib/format";
+import { marketTapeItem } from "../src/lib/markets";
 import { buildSnapshot } from "../src/lib/snapshot";
 import { tileColor } from "../src/lib/sectors";
 import { squarify } from "../src/lib/treemap";
@@ -265,6 +267,23 @@ function tradeLedger(snapshot: Snapshot): string {
     .join("");
 }
 
+function indexTape(snapshot: Snapshot): string {
+  const rows = snapshot.indices ?? [];
+  if (rows.length === 0) return `<p class="sub">指数行情暂时没有拿到。</p>`;
+  return rows
+    .map((quote) => {
+      const item = marketTapeItem(quote.symbol);
+      const price = item?.dollars ? formatUsdPrecise(quote.price) : formatPoints(quote.price);
+      return `
+      <article class="tile" style="--c:${tone(quote.changePercent)}">
+        <p class="kicker">${esc(item?.label ?? quote.symbol)} <em>${esc(quote.symbol)}</em></p>
+        <p class="stat">${esc(price)}</p>
+        <p class="hint" style="color:${tone(quote.changePercent)}">${esc(formatPercent(quote.changePercent))}</p>
+      </article>`;
+    })
+    .join("");
+}
+
 function tape(snapshot: Snapshot): string {
   return (snapshot.watchlist ?? [])
     .map(
@@ -329,9 +348,11 @@ function render(snapshot: Snapshot): string {
     .head span { margin-left: auto; color: var(--muted); font-size: 12px; }
     .sub, .hint, small { color: var(--muted); }
     .sub { margin: 0; font-size: 14px; }
-    .tiles, .tape { display: grid; gap: 12px; }
+    .tiles, .tape, .indices { display: grid; gap: 12px; }
     .tiles { grid-template-columns: repeat(4, 1fr); }
     .tape { grid-template-columns: repeat(4, 1fr); }
+    .indices { grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
+    .indices .stat { font-size: clamp(16px, 1.7vw, 22px); }
     .tile, .panel, .mapwrap {
       background: #fff;
       border: 1px solid var(--line);
@@ -375,7 +396,7 @@ function render(snapshot: Snapshot): string {
     .tag.sell { background: #16A34A1f; color: #16A34A; }
     footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
     @media (max-width: 900px) {
-      .tiles, .tape { grid-template-columns: 1fr 1fr; }
+      .tiles, .tape, .indices { grid-template-columns: 1fr 1fr; }
       .alloc-row { grid-template-columns: 1fr; }
     }
   </style>
@@ -386,6 +407,8 @@ function render(snapshot: Snapshot): string {
     <h1>持仓全景图</h1>
     <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 更新于北京时间 ${esc(when)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
+    <div class="head"><h2>大盘</h2><span>纳指、道指、标普、纳指100 · 期货含夜盘</span></div>
+    <section class="indices">${indexTape(snapshot)}</section>
     <div class="head"><h2>持仓地图</h2><span>方块面积 = 仓位占比</span></div>
     <section class="mapwrap">${mapBlocks(snapshot)}</section>
     <div class="head"><h2>板块配置</h2><span>红涨绿跌</span></div>

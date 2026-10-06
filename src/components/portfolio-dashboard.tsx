@@ -6,6 +6,7 @@ import { FlashValue } from "@/components/flash-value";
 import { HoldingsTable } from "@/components/holdings-table";
 import { HoldingsTreemap } from "@/components/holdings-treemap";
 import { LiveClock } from "@/components/live-clock";
+import { MarketTape } from "@/components/market-tape";
 import { CapitalForm } from "@/components/capital-form";
 import { SectorAllocation, SectorCards } from "@/components/sector-board";
 import { Sparkline } from "@/components/sparkline";
@@ -216,6 +217,9 @@ export function PortfolioDashboard({
           hint={cash > 0 ? `占总资产 ${formatWeight(totals.cashWeight ?? 0)}` : "还没有登记现金"}
         />
       </section>
+
+      <SectionTitle title="大盘" tag="Indices" hint="纳指、道指、标普、纳指100 · 期货含夜盘" />
+      <MarketTape quotes={snapshot.indices ?? []} />
 
       <SectionTitle title="持仓地图" tag="Map" hint="方块面积 = 仓位占比" />
       <div className="card-rise mapwrap rounded-[20px] border border-black/10 bg-white p-3.5">
