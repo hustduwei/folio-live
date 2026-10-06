@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   formatCnyWhole,
+  formatYearMonth,
   formatPercent,
   formatShares,
   formatSignedUsdWhole,
@@ -381,12 +382,7 @@ export function PortfolioDashboard({
                         <span className="text-muted-foreground">
                           ÷ {event.fx} = {formatUsd(event.usd)}
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Intl.DateTimeFormat("zh-CN", {
-                            month: "numeric",
-                            day: "numeric",
-                          }).format(new Date(event.executedAt))}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{formatYearMonth(event.executedAt)}</span>
                         {event.note ? <span className="text-xs text-muted-foreground">{event.note}</span> : null}
                       </div>
                       {readOnly ? null : (

@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   formatCnyWhole,
+  formatYearMonth,
   formatPercent,
   formatShares,
   formatUsdPrecise,
@@ -241,7 +242,7 @@ function capitalLedger(snapshot: Snapshot): string {
         <span class="tag ${event.kind === "deposit" ? "in" : "out"}">${event.kind === "deposit" ? "入金" : "提现"}</span>
         <b>${esc(formatCnyWhole(event.cny))}</b>
         <span>÷ ${esc(String(event.fx))} = ${esc(formatUsd(event.usd))}</span>
-        <span>${esc(whenLabel(event.executedAt))}</span>
+        <span>${esc(formatYearMonth(event.executedAt))}</span>
         ${event.note ? `<span>${esc(event.note)}</span>` : ""}
       </li>`,
     )

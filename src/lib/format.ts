@@ -80,6 +80,16 @@ const cnyWhole = new Intl.NumberFormat("zh-CN", {
   maximumFractionDigits: 0,
 });
 
+export function formatYearMonth(iso: string): string {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "long",
+  }).format(date);
+}
+
 export function formatCnyWhole(value: number): string {
   if (!Number.isFinite(value)) return "—";
   return cnyWhole.format(Math.round(value));
