@@ -218,8 +218,8 @@ export function PortfolioDashboard({
         />
       </section>
 
-      <SectionTitle title="大盘" tag="Indices" hint="纳指、道指、标普、纳指100 · 期货含夜盘" />
-      <MarketTape quotes={snapshot.indices ?? []} />
+      <SectionTitle title="大盘" tag="Indices" hint="较上一交易日收盘 · 与今日同一口径" />
+      <MarketTape quotes={snapshot.indices ?? []} marketState={market.state} />
 
       <SectionTitle title="持仓地图" tag="Map" hint="方块面积 = 仓位占比" />
       <div className="card-rise mapwrap rounded-[20px] border border-black/10 bg-white p-3.5">

@@ -12,7 +12,7 @@ import {
   formatWeight,
   formatPoints,
 } from "../src/lib/format";
-import { marketTapeItem } from "../src/lib/markets";
+import { marketTapeItem, showsOvernightPrice } from "../src/lib/markets";
 import { buildSnapshot } from "../src/lib/snapshot";
 import { tileColor } from "../src/lib/sectors";
 import { squarify } from "../src/lib/treemap";
@@ -274,11 +274,13 @@ function indexTape(snapshot: Snapshot): string {
     .map((quote) => {
       const item = marketTapeItem(quote.symbol);
       const price = item?.dollars ? formatUsdPrecise(quote.price) : formatPoints(quote.price);
+      const overnight = showsOvernightPrice(quote.marketTime, snapshot.market.state, new Date(snapshot.fetchedAt));
+      const percent = Math.round(quote.changePercent * 100) / 100;
       return `
-      <article class="tile" style="--c:${tone(quote.changePercent)}">
+      <article class="tile" style="--c:${tone(percent)}">
         <p class="kicker">${esc(item?.label ?? quote.symbol)} <em>${esc(quote.symbol)}</em></p>
         <p class="stat">${esc(price)}</p>
-        <p class="hint" style="color:${tone(quote.changePercent)}">${esc(formatPercent(quote.changePercent))}</p>
+        <p class="hint" style="color:${tone(percent)}">${esc(formatPercent(percent))}${overnight ? " · 夜盘" : ""}</p>
       </article>`;
     })
     .join("");
@@ -407,7 +409,7 @@ function render(snapshot: Snapshot): string {
     <h1>持仓全景图</h1>
     <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 更新于北京时间 ${esc(when)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
-    <div class="head"><h2>大盘</h2><span>纳指、道指、标普、纳指100 · 期货含夜盘</span></div>
+    <div class="head"><h2>大盘</h2><span>较上一交易日收盘 · 与今日同一口径，约每 5 分钟更新</span></div>
     <section class="indices">${indexTape(snapshot)}</section>
     <div class="head"><h2>持仓地图</h2><span>方块面积 = 仓位占比</span></div>
     <section class="mapwrap">${mapBlocks(snapshot)}</section>

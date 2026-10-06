@@ -1,3 +1,6 @@
+import { lastSettlementAt } from "./market";
+import type { MarketState } from "./types";
+
 export type MarketTapeItem = {
   symbol: string;
   label: string;
@@ -22,4 +25,15 @@ const tapeBySymbol = new Map(MARKET_TAPE.map((item) => [item.symbol, item]));
 
 export function marketTapeItem(symbol: string): MarketTapeItem | undefined {
   return tapeBySymbol.get(symbol);
+}
+
+/** Night-session print, using the same 20:00 ET cutoff as today's P&L. */
+export function showsOvernightPrice(
+  marketTime: string | null,
+  state: MarketState,
+  now = new Date(),
+): boolean {
+  if (state !== "night" || !marketTime) return false;
+  const time = Date.parse(marketTime);
+  return Number.isFinite(time) && time >= lastSettlementAt(now).getTime();
 }

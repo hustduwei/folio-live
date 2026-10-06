@@ -3,11 +3,11 @@
 import { FlashValue } from "@/components/flash-value";
 import { Sparkline } from "@/components/sparkline";
 import { formatPercent, formatPoints, formatUsdPrecise, signedClass } from "@/lib/format";
-import { marketTapeItem } from "@/lib/markets";
-import type { Quote } from "@/lib/types";
+import { marketTapeItem, showsOvernightPrice } from "@/lib/markets";
+import type { MarketState, Quote } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export function MarketTape({ quotes }: { quotes: Quote[] }) {
+export function MarketTape({ quotes, marketState }: { quotes: Quote[]; marketState: MarketState }) {
   if (quotes.length === 0) {
     return (
       <p className="rounded-[18px] border border-dashed border-black/10 bg-white/70 px-4 py-8 text-center text-sm text-muted-foreground">
@@ -21,6 +21,8 @@ export function MarketTape({ quotes }: { quotes: Quote[] }) {
       {quotes.map((quote) => {
         const item = marketTapeItem(quote.symbol);
         const price = item?.dollars ? formatUsdPrecise(quote.price) : formatPoints(quote.price);
+        const overnight = showsOvernightPrice(quote.marketTime, marketState);
+        const percent = Math.round(quote.changePercent * 100) / 100;
         return (
           <article key={quote.symbol} className="rounded-[18px] border border-black/10 bg-white px-3.5 py-3">
             <div className="flex items-start justify-between gap-2">
@@ -35,8 +37,9 @@ export function MarketTape({ quotes }: { quotes: Quote[] }) {
             <p className="mt-2 font-stat text-[clamp(16px,1.6vw,22px)] leading-none font-bold tracking-tight">
               <FlashValue value={quote.price}>{price}</FlashValue>
             </p>
-            <p className={cn("mt-1.5 font-mono text-xs font-bold", signedClass(quote.changePercent))}>
-              {formatPercent(quote.changePercent)}
+            <p className={cn("mt-1.5 font-mono text-xs font-bold", signedClass(percent))}>
+              {formatPercent(percent)}
+              {overnight ? <span className="ml-1 font-sans font-medium text-muted-foreground">夜盘</span> : null}
             </p>
           </article>
         );

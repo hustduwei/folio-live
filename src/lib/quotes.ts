@@ -1,5 +1,4 @@
 import { WATCHLIST } from "./aliases";
-import { MARKET_TAPE_SYMBOLS } from "./markets";
 import { lastSettlementAt } from "./market";
 import type { Quote, SearchHit } from "./types";
 
@@ -389,8 +388,6 @@ async function settlementPrint(symbol: string, settlementSec: number): Promise<n
   return null;
 }
 
-const TAPE_SYMBOLS = new Set(MARKET_TAPE_SYMBOLS);
-
 async function applySettlementBaselines(quotes: Quote[]): Promise<Quote[]> {
   if (quotes.length === 0) return quotes;
   const settlement = lastSettlementAt();
@@ -400,9 +397,7 @@ async function applySettlementBaselines(quotes: Quote[]): Promise<Quote[]> {
     baselineCache && baselineCache.settlement === settlement.getTime() && baselineCache.until > now
       ? baselineCache.prices
       : new Map<string, number>();
-  const missing = quotes
-    .map((quote) => quote.symbol)
-    .filter((symbol) => !TAPE_SYMBOLS.has(symbol) && !cached.has(symbol));
+  const missing = quotes.map((quote) => quote.symbol).filter((symbol) => !cached.has(symbol));
   if (missing.length > 0) {
     const found = await Promise.all(
       missing.map(async (symbol) => [symbol, await settlementPrint(symbol, settlementSec)] as const),
@@ -414,7 +409,6 @@ async function applySettlementBaselines(quotes: Quote[]): Promise<Quote[]> {
   }
 
   return quotes.map((quote) => {
-    if (TAPE_SYMBOLS.has(quote.symbol)) return quote;
     const baseline = cached.get(quote.symbol);
     if (baseline == null || baseline === 0) return quote;
     const change = quote.price - baseline;
