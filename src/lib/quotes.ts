@@ -36,14 +36,18 @@ type YahooSparkItem = {
   }>;
 };
 
-async function yahooJson<T>(url: string): Promise<T> {
+async function yahooJson<T>(
+  url: string,
+  init: { headers?: Record<string, string>; timeoutMs?: number } = {},
+): Promise<T> {
   const response = await fetch(url, {
     headers: {
       "User-Agent": YAHOO_UA,
       Accept: "application/json",
+      ...init.headers,
     },
     cache: "no-store",
-    signal: AbortSignal.timeout(4_000),
+    signal: AbortSignal.timeout(init.timeoutMs ?? 4_000),
   });
   if (!response.ok) {
     throw new Error(`行情接口 ${response.status}`);
@@ -217,10 +221,117 @@ async function loadQuotes(unique: string[]): Promise<Quote[]> {
     );
   }
 
+  await overlayLatestPrints(bySymbol);
+
   const quotes = unique
     .map((symbol) => bySymbol.get(symbol) ?? lastQuotes.get(symbol))
     .filter((quote): quote is Quote => Boolean(quote));
   return applySettlementBaselines(quotes);
+}
+
+type SessionPrint = { price: number; time: number };
+
+const SESSION_PRINTS = [
+  ["regularMarketPrice", "regularMarketTime"],
+  ["preMarketPrice", "preMarketTime"],
+  ["postMarketPrice", "postMarketTime"],
+  ["overnightMarketPrice", "overnightMarketTime"],
+] as const;
+
+function latestSessionPrint(row: Record<string, unknown>): SessionPrint | null {
+  let best: SessionPrint | null = null;
+  for (const [priceKey, timeKey] of SESSION_PRINTS) {
+    const price = Number(row[priceKey]);
+    const time = Number(row[timeKey]);
+    if (!Number.isFinite(price) || !Number.isFinite(time) || time <= 0) continue;
+    if (!best || time >= best.time) best = { price, time };
+  }
+  return best;
+}
+
+type YahooAuth = { cookie: string; crumb: string; until: number };
+let yahooAuth: YahooAuth | null = null;
+
+async function yahooAuthGet(): Promise<YahooAuth> {
+  if (yahooAuth && yahooAuth.until > Date.now()) return yahooAuth;
+  const consent = await fetch("https://fc.yahoo.com", {
+    headers: { "User-Agent": YAHOO_UA },
+    redirect: "manual",
+    signal: AbortSignal.timeout(8_000),
+  });
+  const cookie = consent.headers
+    .getSetCookie()
+    .map((entry) => entry.split(";")[0]?.trim())
+    .filter(Boolean)
+    .join("; ");
+  if (!cookie) throw new Error("行情会话失败");
+  const crumbRes = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
+    headers: { "User-Agent": YAHOO_UA, Accept: "text/plain", Cookie: cookie },
+    cache: "no-store",
+    signal: AbortSignal.timeout(8_000),
+  });
+  const crumb = (await crumbRes.text()).trim();
+  if (!crumbRes.ok || !crumb || crumb.includes("<") || crumb.length > 64) {
+    throw new Error("行情凭证失败");
+  }
+  yahooAuth = { cookie, crumb, until: Date.now() + 30 * 60 * 1000 };
+  return yahooAuth;
+}
+
+async function fetchLatestPrints(symbols: string[]): Promise<Map<string, SessionPrint>> {
+  const load = async () => {
+    const auth = await yahooAuthGet();
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?${new URLSearchParams({
+      symbols: symbols.join(","),
+      fields: SESSION_PRINTS.flat().join(","),
+      formatted: "false",
+      overnightPrice: "true",
+      lang: "en-US",
+      region: "US",
+      crumb: auth.crumb,
+    }).toString()}`;
+    return yahooJson<{ quoteResponse?: { result?: Array<Record<string, unknown>> } }>(url, {
+      headers: { Cookie: auth.cookie },
+      timeoutMs: 8_000,
+    });
+  };
+
+  let payload: Awaited<ReturnType<typeof load>>;
+  try {
+    payload = await load();
+  } catch {
+    yahooAuth = null;
+    payload = await load();
+  }
+
+  const prints = new Map<string, SessionPrint>();
+  for (const row of payload.quoteResponse?.result ?? []) {
+    const symbol = normalizeSymbol(String(row.symbol ?? ""));
+    const print = latestSessionPrint(row);
+    if (symbol && print) prints.set(symbol, print);
+  }
+  return prints;
+}
+
+async function overlayLatestPrints(bySymbol: Map<string, Quote>) {
+  const symbols = [...bySymbol.keys()];
+  if (symbols.length === 0) return;
+  try {
+    const prints = await fetchLatestPrints(symbols);
+    for (const [symbol, quote] of bySymbol) {
+      const print = prints.get(symbol);
+      if (!print) continue;
+      const known = quote.marketTime ? Date.parse(quote.marketTime) : 0;
+      if (Number.isFinite(known) && print.time * 1000 + 1_000 < known) continue;
+      bySymbol.set(symbol, {
+        ...quote,
+        price: print.price,
+        marketTime: new Date(print.time * 1000).toISOString(),
+      });
+    }
+  } catch {
+    // Keep the regular-session price when the overnight feed is down.
+  }
 }
 
 type ChartBar = {

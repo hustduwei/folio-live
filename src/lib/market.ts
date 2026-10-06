@@ -35,7 +35,8 @@ export function getMarketClock(date = new Date()): MarketClock {
   const nyDate = `${ny.year}-${ny.month}-${ny.day}`;
 
   let state: MarketState = "closed";
-  if (!weekend) {
+  if (isOvernightSession(ny.weekday, minutes)) state = "night";
+  else if (!weekend) {
     if (minutes >= 4 * 60 && minutes < 9 * 60 + 30) state = "pre";
     else if (minutes >= 9 * 60 + 30 && minutes < 16 * 60) state = "open";
     else if (minutes >= 16 * 60 && minutes < 20 * 60) state = "post";
@@ -45,6 +46,7 @@ export function getMarketClock(date = new Date()): MarketClock {
     pre: "盘前",
     open: "开盘中",
     post: "盘后",
+    night: "夜盘",
     closed: "已收盘",
   };
 
@@ -52,6 +54,15 @@ export function getMarketClock(date = new Date()): MarketClock {
 }
 
 const DAY_CUTOFF_HOUR = 20;
+
+/** Blue Ocean overnight: 20:00–04:00 ET, Sunday evening through Friday morning. */
+function isOvernightSession(weekday: string, minutes: number): boolean {
+  const evening = weekday === "Sun" || weekday === "Mon" || weekday === "Tue" || weekday === "Wed" || weekday === "Thu";
+  const morning = weekday === "Mon" || weekday === "Tue" || weekday === "Wed" || weekday === "Thu" || weekday === "Fri";
+  if (minutes >= DAY_CUTOFF_HOUR * 60 && evening) return true;
+  if (minutes < 4 * 60 && morning) return true;
+  return false;
+}
 
 function nyLocalToUtc(year: number, month: number, day: number, hour: number, minute: number): Date {
   const target = Date.UTC(year, month - 1, day, hour, minute, 0);

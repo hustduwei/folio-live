@@ -128,9 +128,9 @@ export function PortfolioDashboard({
                 · 现金 <b className="text-foreground">{formatUsd(cash)}</b>
               </>
             ) : null}
-            {market.state === "open" || market.state === "pre" || market.state === "post"
-              ? " · 报价每 3 秒刷新"
-              : " · 美股已收盘，显示最新价"}
+            {market.state === "closed"
+              ? " · 美股已收盘，显示最新价"
+              : " · 报价每 3 秒刷新"}
           </p>
         </div>
       </header>
@@ -174,7 +174,7 @@ export function PortfolioDashboard({
               className={cn("font-stat text-[clamp(26px,3.1vw,40px)] font-bold leading-none", signedClass(totals.dayPnl))}
             />
           }
-          hint={`${formatPercent(totals.dayPnlPercent)} · 较上一交易日收盘`}
+          hint={`${formatPercent(totals.dayPnlPercent)} · 较上一交易日收盘${market.state === "night" ? " · 夜盘" : ""}`}
           tone={totals.dayPnl}
         />
         <StatTile

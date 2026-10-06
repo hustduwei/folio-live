@@ -74,7 +74,7 @@ export type Quote = {
   marketTime: string | null;
 };
 
-export type MarketState = "pre" | "open" | "post" | "closed";
+export type MarketState = "pre" | "open" | "post" | "night" | "closed";
 
 export type MarketClock = {
   state: MarketState;
