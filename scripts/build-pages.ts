@@ -417,7 +417,7 @@ function render(snapshot: Snapshot): string {
     <div class="head"><h2>板块配置</h2><span>红涨绿跌</span></div>
     <div class="bar">${sectorBar(snapshot.sectors)}</div>
     <section class="alloc">${sectorCards(snapshot.sectors)}</section>
-    <div class="head"><h2>行情条</h2><span>大约每 5 分钟刷新</span></div>
+    <div class="head"><h2>行情条</h2><span>按持仓市值从大到小 · 已清仓不显示</span></div>
     <section class="tape">${tape(snapshot)}</section>
     <div class="head"><h2>持仓明细</h2><span>按最新报价重估</span></div>
     <section class="panel">${table(snapshot.holdings)}</section>

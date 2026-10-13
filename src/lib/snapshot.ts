@@ -1,4 +1,3 @@
-import { WATCHLIST } from "./aliases";
 import { MARKET_TAPE_SYMBOLS } from "./markets";
 import { getMarketClock } from "./market";
 import { accountDayPnl, deriveHoldings, readPortfolio, summarize, summarizeCapital, summarizeYear } from "./portfolio";
@@ -29,7 +28,7 @@ function refresh(): Promise<Snapshot> {
 async function assemble(maxWaitMs?: number): Promise<Snapshot> {
   const portfolio = await readPortfolio();
   const heldSymbols = [...new Set(portfolio.trades.map((trade) => normalizeSymbol(trade.symbol)))];
-  const symbols = [...new Set([...heldSymbols, ...WATCHLIST, ...MARKET_TAPE_SYMBOLS])];
+  const symbols = [...new Set([...heldSymbols, ...MARKET_TAPE_SYMBOLS])];
 
   let quotesError: string | null = null;
   let quotes: Awaited<ReturnType<typeof fetchQuotes>> = [];
@@ -50,7 +49,12 @@ async function assemble(maxWaitMs?: number): Promise<Snapshot> {
     quotesError,
     holdings,
     sectors: attachCashSector(groupBySector(holdings), totals.cash, totals.netValue),
-    watchlist: quotes.filter((quote) => WATCHLIST.includes(quote.symbol)),
+    watchlist: [...holdings]
+      .sort((a, b) => b.marketValue - a.marketValue || a.symbol.localeCompare(b.symbol))
+      .flatMap((holding) => {
+        const quote = quotes.find((row) => row.symbol === holding.symbol);
+        return quote ? [quote] : [];
+      }),
     indices: MARKET_TAPE_SYMBOLS.flatMap((symbol) => {
       const quote = quotes.find((row) => row.symbol === symbol);
       return quote ? [quote] : [];

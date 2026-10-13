@@ -261,7 +261,7 @@ export function PortfolioDashboard({
           </div>
         )}
         <div className="card-rise rounded-[18px] border border-black/10 bg-white p-5">
-          <SectionHead title="行情条" tag="Tape" desc="热门美股，用来确认报价是活的" />
+          <SectionHead title="行情条" tag="Tape" desc="按持仓市值从大到小，已清仓的不再显示" />
           <div className="grid grid-cols-2 gap-2.5">
             {(snapshot.watchlist ?? []).map((quote) => (
               <div key={quote.symbol} className="rounded-xl border border-black/10 bg-[#F7F8FC] p-3">
