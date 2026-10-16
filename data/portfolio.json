@@ -286,7 +286,7 @@
       "side": "buy",
       "shares": 5,
       "price": 144,
-      "executedAt": "2026-10-16T00:28:00.000Z",
+      "executedAt": "2026-10-15T14:00:00.000Z",
       "affectsCash": true
     },
     {
@@ -296,7 +296,7 @@
       "side": "buy",
       "shares": 10,
       "price": 50,
-      "executedAt": "2026-10-16T00:28:01.000Z",
+      "executedAt": "2026-10-15T14:00:01.000Z",
       "affectsCash": true
     }
   ]
