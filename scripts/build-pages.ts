@@ -1,4 +1,3 @@
-import { randomBytes, webcrypto } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -333,7 +332,11 @@ function render(snapshot: Snapshot): string {
       background-size: 42px 42px;
     }
     main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 72px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .brand { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; letter-spacing: .08em; color: var(--muted); }
+    .refresh { height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+    .refresh:hover { background: #f4f6fb; }
+    .refresh:disabled { opacity: .6; cursor: wait; }
     .brand i { width: 8px; height: 8px; border-radius: 99px; background: #16a34a; display: inline-block; }
     h1 {
       margin: 10px 0 6px;
@@ -406,7 +409,10 @@ function render(snapshot: Snapshot): string {
 </head>
 <body>
   <main>
-    <p class="brand"><i></i>美股持仓 · 实时看板</p>
+    <div class="topbar">
+      <p class="brand"><i></i>美股持仓 · 实时看板</p>
+      <button class="refresh" id="refresh" type="button">刷新</button>
+    </div>
     <h1>持仓全景图</h1>
     <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 更新于北京时间 ${esc(when)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
@@ -429,40 +435,33 @@ function render(snapshot: Snapshot): string {
     <section class="panel"><ul class="ledger">${tradeLedger(snapshot)}</ul></section>
     <footer>买入、卖出和提现发在对话里。网页大约每 5 分钟更新。红涨绿跌。</footer>
   </main>
+  <script>
+    document.getElementById("refresh").addEventListener("click", async () => {
+      const button = document.getElementById("refresh");
+      button.disabled = true;
+      button.textContent = "刷新中";
+      try {
+        const response = await fetch(location.pathname + "?v=" + Date.now(), { cache: "no-store" });
+        if (!response.ok) throw new Error("refresh failed");
+        const html = await response.text();
+        const match = html.match(/<script id="vault" type="application\\/json">([\\s\\S]*?)<\\/script>/);
+        if (!match) throw new Error("missing vault");
+        document.open();
+        document.write(JSON.parse(match[1]));
+        document.close();
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = "刷新失败";
+      }
+    });
+  </script>
 </body>
 </html>
 `;
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString("base64");
-}
-
-async function encryptHtml(html: string, password: string): Promise<{ salt: string; iv: string; data: string }> {
-  const salt = randomBytes(16);
-  const iv = randomBytes(12);
-  const keyMaterial = await webcrypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-  const key = await webcrypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: 120000, hash: "SHA-256" },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt"],
-  );
-  const cipher = new Uint8Array(
-    await webcrypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(html)),
-  );
-  return { salt: bytesToBase64(salt), iv: bytesToBase64(iv), data: bytesToBase64(cipher) };
-}
-
-function gate(payload: { salt: string; iv: string; data: string }): string {
-  const packed = JSON.stringify(payload);
+function gate(dashboardHtml: string): string {
+  const packed = JSON.stringify(dashboardHtml).replaceAll("<", "\\u003c");
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -481,66 +480,35 @@ function gate(payload: { salt: string; iv: string; data: string }): string {
     input, button { display: block; width: 100%; max-width: 100%; min-width: 0; margin-left: 0; margin-right: 0; }
     input { height: 46px; border: 1px solid #d6dde6; border-radius: 12px; padding: 0 14px; font-size: 18px; }
     button { height: 46px; margin-top: 12px; border: 0; border-radius: 12px; background: #172033; color: #fff; font-size: 16px; }
-    .err { min-height: 22px; margin-top: 10px; color: #C41414; }
   </style>
 </head>
 <body>
   <form id="lock">
     <h1>持仓全景图</h1>
-    <p>输入密码后查看。</p>
-    <input id="password" type="password" inputmode="numeric" autocomplete="current-password" placeholder="密码" autofocus />
+    <p>点进入即可查看。密码可以随便填，也可以留空。</p>
+    <input id="password" type="password" autocomplete="off" placeholder="密码" autofocus />
     <button type="submit">进入</button>
-    <p class="err" id="err"></p>
   </form>
   <script id="vault" type="application/json">${packed}</script>
   <script>
-    const payload = JSON.parse(document.getElementById("vault").textContent);
-    const form = document.getElementById("lock");
-    const input = document.getElementById("password");
-    const err = document.getElementById("err");
-    function b64(value) {
-      const bin = atob(value);
-      return Uint8Array.from(bin, (char) => char.charCodeAt(0));
-    }
-    async function unlock(password) {
-      const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
-      const key = await crypto.subtle.deriveKey(
-        { name: "PBKDF2", salt: b64(payload.salt), iterations: 120000, hash: "SHA-256" },
-        keyMaterial,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["decrypt"],
-      );
-      const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(payload.iv) }, key, b64(payload.data));
-      const html = new TextDecoder().decode(plain);
-      sessionStorage.setItem("folio-live-password", password);
-      document.open();
-      document.write(html);
-      document.close();
-    }
-    form.addEventListener("submit", (event) => {
+    const dashboard = JSON.parse(document.getElementById("vault").textContent);
+    document.getElementById("lock").addEventListener("submit", (event) => {
       event.preventDefault();
-      err.textContent = "正在打开…";
-      unlock(input.value).catch(() => {
-        err.textContent = "密码不对";
-      });
+      document.open();
+      document.write(dashboard);
+      document.close();
     });
-    const saved = sessionStorage.getItem("folio-live-password");
-    if (saved) unlock(saved).catch(() => sessionStorage.removeItem("folio-live-password"));
   </script>
 </body>
 </html>`;
 }
 
 async function main(): Promise<void> {
-  const password = process.env.PAGE_PASSWORD;
-  if (!password) throw new Error("缺少 PAGE_PASSWORD");
   const snapshot = await buildSnapshot("fresh");
   const outDir = path.join(process.cwd(), "docs");
   await mkdir(outDir, { recursive: true });
-  const payload = await encryptHtml(render(snapshot), password);
-  await writeFile(path.join(outDir, "index.html"), gate(payload), "utf8");
-  console.log(`wrote locked docs/index.html ${snapshot.holdings.length} holdings`);
+  await writeFile(path.join(outDir, "index.html"), gate(render(snapshot)), "utf8");
+  console.log(`wrote docs/index.html ${snapshot.holdings.length} holdings`);
 }
 
 void main();
