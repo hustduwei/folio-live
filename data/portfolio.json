@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "cash": 443.82,
+  "cash": 34.32,
   "capital": [
     {
       "id": "cap-principal",
@@ -307,6 +307,16 @@
       "shares": 5,
       "price": 144,
       "executedAt": "2026-10-16T14:00:00.000Z",
+      "affectsCash": true
+    },
+    {
+      "id": "f3a91c28-7d14-4b86-9e02-5c8a1d6b4e70",
+      "symbol": "SPCX",
+      "name": "spacex",
+      "side": "buy",
+      "shares": 3,
+      "price": 136.5,
+      "executedAt": "2026-10-30T14:00:00.000Z",
       "affectsCash": true
     }
   ]
