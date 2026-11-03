@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "cash": 34.32,
+  "cash": 1267.32,
   "capital": [
     {
       "id": "cap-principal",
@@ -317,6 +317,16 @@
       "shares": 3,
       "price": 136.5,
       "executedAt": "2026-10-30T14:00:00.000Z",
+      "affectsCash": true
+    },
+    {
+      "id": "e2b84d17-5c39-4a60-8f71-6d0c3a9b2e48",
+      "symbol": "TSLA",
+      "name": "特斯拉",
+      "side": "sell",
+      "shares": 3,
+      "price": 411,
+      "executedAt": "2026-11-02T15:00:00.000Z",
       "affectsCash": true
     }
   ]
