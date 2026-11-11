@@ -1,4 +1,4 @@
-import { dateInNewYork, lastSettlementAt } from "../lib/market";
+import { dateInNewYork } from "../lib/market";
 import { normalizeSymbol } from "../lib/quotes";
 import type { Quote } from "../lib/types";
 
@@ -30,9 +30,8 @@ export function parseTencentClock(raw: string): Date | null {
   );
 }
 
-/** A print from before the 20:00 ET cutoff is that session's close. A later print uses the feed's previous close. */
-export function settlementBaseline(price: number, feedPrev: number, at: Date, now = new Date()): number {
-  if (at.getTime() <= lastSettlementAt(now).getTime()) return price;
+/** Previous close from the quote feed. A finished session keeps that day's move instead of showing 0. */
+export function settlementBaseline(price: number, feedPrev: number): number {
   return Number.isFinite(feedPrev) && feedPrev > 0 ? feedPrev : price;
 }
 
@@ -47,7 +46,7 @@ export function quoteFromTencent(
   const feedPrev = Number(parts[4]);
   if (!Number.isFinite(price) || price <= 0) return null;
   const at = parseTencentClock(parts[30] ?? "") ?? now;
-  const previousClose = settlementBaseline(price, feedPrev, at, now);
+  const previousClose = settlementBaseline(price, feedPrev);
   const change = price - previousClose;
   const high = Number(parts[33]);
   const low = Number(parts[34]);
