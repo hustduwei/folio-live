@@ -105,14 +105,16 @@ export async function loadTencentQuotes(symbols: string[], fallback: Quote[], no
   await new Promise<void>((resolve, reject) => {
     const timer = window.setTimeout(() => reject(new Error("行情超时")), 8_000);
     const el = document.createElement("script");
-    el.src = `https://qt.gtimg.cn/q=${codes.join(",")}`;
+    el.src = `https://qt.gtimg.cn/q=${codes.join(",")}&_=${Date.now()}`;
     el.async = true;
     el.onload = () => {
       window.clearTimeout(timer);
+      el.remove();
       resolve();
     };
     el.onerror = () => {
       window.clearTimeout(timer);
+      el.remove();
       reject(new Error("行情加载失败"));
     };
     document.head.appendChild(el);

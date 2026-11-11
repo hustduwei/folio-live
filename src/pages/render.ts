@@ -423,7 +423,7 @@ export function renderPage(
     <h1>持仓全景图</h1>
     <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 更新于北京时间 ${esc(when)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
-    <div class="head"><h2>大盘</h2><span>较上一交易日收盘 · 与今日同一口径，打开或刷新即更新</span></div>
+    <div class="head"><h2>大盘</h2><span>较上一交易日收盘 · 与今日同一口径，页面打开后约每 5 秒更新</span></div>
     <section class="indices">${indexTape(snapshot)}</section>
     <div class="head"><h2>持仓地图</h2><span>方块面积 = 仓位占比</span></div>
     <section class="mapwrap">${mapBlocks(snapshot)}</section>
@@ -440,7 +440,7 @@ export function renderPage(
     <section class="panel"><ul class="ledger">${capitalLedger(snapshot)}</ul></section>
     <div class="head"><h2>成交记录</h2><span>最近 5 笔</span></div>
     <section class="panel"><ul class="ledger">${tradeLedger(snapshot)}</ul></section>
-    <footer>买入、卖出和提现发在对话里。打开页面或点右上角刷新，会立刻重取报价。红涨绿跌。</footer>
+    <footer>买入、卖出和提现发在对话里。页面打开后大约每 5 秒自动重取报价，右上角也可以立刻刷新。红涨绿跌。</footer>
   </main>
   ${booksJson ? `<script id="books" type="application/json">${booksJson}</script>` : ""}
   <script src="live.js"></script>
