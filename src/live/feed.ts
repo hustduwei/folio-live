@@ -1,4 +1,4 @@
-import { dateInNewYork } from "../lib/market";
+import { dateInNewYork, lastSettlementAt } from "../lib/market";
 import { normalizeSymbol } from "../lib/quotes";
 import type { Quote } from "../lib/types";
 
@@ -30,9 +30,34 @@ export function parseTencentClock(raw: string): Date | null {
   );
 }
 
-/** Previous close from the quote feed. A finished session keeps that day's move instead of showing 0. */
+/** Previous close once a print belongs to the session that started at 20:00 ET. */
 export function settlementBaseline(price: number, feedPrev: number): number {
   return Number.isFinite(feedPrev) && feedPrev > 0 ? feedPrev : price;
+}
+
+function inNewSession(quote: Quote | null | undefined, settlementMs: number): boolean {
+  if (!quote?.marketTime) return false;
+  const time = Date.parse(quote.marketTime);
+  return Number.isFinite(time) && time >= settlementMs;
+}
+
+/**
+ * Longbridge rolls today's P&L at 20:00 ET. The baseline becomes that session's
+ * close, and the latest price includes the overnight print. A feed still showing
+ * the previous regular close must not be reused as today's move.
+ */
+export function pickLiveQuote(fresh: Quote | null, fallback: Quote | undefined, now = new Date()): Quote | null {
+  const settlementMs = lastSettlementAt(now).getTime();
+  if (fresh && inNewSession(fresh, settlementMs)) return fresh;
+  if (fallback && inNewSession(fallback, settlementMs)) return fallback;
+  const prior = fresh ?? fallback ?? null;
+  if (!prior) return null;
+  return {
+    ...prior,
+    previousClose: prior.price,
+    change: 0,
+    changePercent: 0,
+  };
 }
 
 export function quoteFromTencent(
@@ -92,8 +117,8 @@ function quotesFromRows(
     const previous = fallbackBySymbol.get(normalizeSymbol(symbol));
     const raw = rawFor(symbol);
     const quote = raw ? quoteFromTencent(symbol, raw, previous, now) : null;
-    if (quote) quotes.push(quote);
-    else if (previous) quotes.push(previous);
+    const picked = pickLiveQuote(quote, previous, now);
+    if (picked) quotes.push(picked);
   }
   return quotes;
 }
