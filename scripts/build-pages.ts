@@ -62,7 +62,10 @@ async function main(): Promise<void> {
   const snapshot = viewSnapshot(portfolio, quotes);
   const outDir = path.join(process.cwd(), "docs");
   await mkdir(outDir, { recursive: true });
-  const dashboard = renderPage(snapshot, { books: { portfolio, fallback: quotes } });
+  const dashboard = renderPage(snapshot, {
+    books: { portfolio, fallback: quotes },
+    scriptSrc: `live.js?v=${Date.now()}`,
+  });
   await writeFile(path.join(outDir, "index.html"), gate(dashboard), "utf8");
   await esbuild.build({
     entryPoints: [path.join(process.cwd(), "src/live/boot.ts")],

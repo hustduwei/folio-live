@@ -48,8 +48,9 @@ async function redraw(manual: boolean): Promise<void> {
     const portfolio: PortfolioFile = books.portfolio;
     const snapshot = viewSnapshot(portfolio, quotes);
     const nextBooks: PageBooks = { portfolio, fallback: mergeQuotes(books.fallback, quotes) };
+    const scriptSrc = document.querySelector("script[src*='live.js']")?.getAttribute("src") ?? "live.js";
     document.open();
-    document.write(renderPage(snapshot, { live: true, books: nextBooks }));
+    document.write(renderPage(snapshot, { live: true, books: nextBooks, scriptSrc }));
     document.close();
   } catch {
     if (manual && button) {

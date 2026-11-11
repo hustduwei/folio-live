@@ -303,7 +303,7 @@ function tape(snapshot: Snapshot): string {
 
 export function renderPage(
   snapshot: Snapshot,
-  options: { live?: boolean; books?: PageBooks } = {},
+  options: { live?: boolean; books?: PageBooks; scriptSrc?: string } = {},
 ): string {
   const year = snapshot.year;
   const capital = snapshot.capital;
@@ -317,6 +317,7 @@ export function renderPage(
   }).format(new Date(snapshot.fetchedAt));
   const booksJson = options.books ? JSON.stringify(options.books).replaceAll("<", "\\u003c") : "";
   const liveAttr = options.live ? ` data-live="1"` : "";
+  const scriptSrc = options.scriptSrc || "live.js";
 
   return `<!DOCTYPE html>
 <html lang="zh-CN"${liveAttr}>
@@ -443,7 +444,7 @@ export function renderPage(
     <footer>买入、卖出和提现发在对话里。页面打开后大约每 5 秒自动重取报价，右上角也可以立刻刷新。红涨绿跌。</footer>
   </main>
   ${booksJson ? `<script id="books" type="application/json">${booksJson}</script>` : ""}
-  <script src="live.js"></script>
+  <script src="${scriptSrc}"></script>
 </body>
 </html>
 `;
