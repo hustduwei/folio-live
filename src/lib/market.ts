@@ -64,8 +64,15 @@ function isOvernightSession(weekday: string, minutes: number): boolean {
   return false;
 }
 
-function nyLocalToUtc(year: number, month: number, day: number, hour: number, minute: number): Date {
-  const target = Date.UTC(year, month - 1, day, hour, minute, 0);
+export function dateInNewYork(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second = 0,
+): Date {
+  const target = Date.UTC(year, month - 1, day, hour, minute, second);
   let utc = target;
   for (let i = 0; i < 3; i += 1) {
     const ny = nyParts(new Date(utc));
@@ -78,10 +85,10 @@ function nyLocalToUtc(year: number, month: number, day: number, hour: number, mi
 /** Most recent 20:00 America/New_York. Trades after this instant belong to the next day. */
 export function lastSettlementAt(now = new Date()): Date {
   const ny = nyParts(now);
-  const todayCutoff = nyLocalToUtc(Number(ny.year), Number(ny.month), Number(ny.day), DAY_CUTOFF_HOUR, 0);
+  const todayCutoff = dateInNewYork(Number(ny.year), Number(ny.month), Number(ny.day), DAY_CUTOFF_HOUR, 0);
   if (now.getTime() >= todayCutoff.getTime()) return todayCutoff;
   const yesterday = nyParts(new Date(todayCutoff.getTime() - 36 * 60 * 60 * 1000));
-  return nyLocalToUtc(Number(yesterday.year), Number(yesterday.month), Number(yesterday.day), DAY_CUTOFF_HOUR, 0);
+  return dateInNewYork(Number(yesterday.year), Number(yesterday.month), Number(yesterday.day), DAY_CUTOFF_HOUR, 0);
 }
 
 export const QUOTE_POLL_MS = 3_000;

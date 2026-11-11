@@ -1,9 +1,8 @@
 import { MARKET_TAPE_SYMBOLS } from "./markets";
-import { getMarketClock } from "./market";
-import { accountDayPnl, deriveHoldings, readPortfolio, summarize, summarizeCapital, summarizeYear } from "./portfolio";
+import { readPortfolio } from "./portfolio";
 import { fetchQuotes, normalizeSymbol } from "./quotes";
-import { attachCashSector, groupBySector } from "./sectors";
 import type { Snapshot } from "./types";
+import { viewSnapshot } from "./view";
 
 let lastGood: Snapshot | null = null;
 let inflight: Promise<Snapshot> | null = null;
@@ -38,34 +37,8 @@ async function assemble(maxWaitMs?: number): Promise<Snapshot> {
     quotesError = error instanceof Error ? error.message : "行情暂时不可用";
   }
 
-  const holdings = deriveHoldings(portfolio.trades, quotes);
-  const totals = summarize(holdings, portfolio.cash);
-  const day = accountDayPnl(portfolio.trades, quotes);
-  totals.dayPnl = day.pnl;
-  totals.dayPnlPercent = day.percent;
-  const snapshot: Snapshot = {
-    fetchedAt: new Date().toISOString(),
-    market: getMarketClock(),
-    quotesError,
-    holdings,
-    sectors: attachCashSector(groupBySector(holdings), totals.cash, totals.netValue),
-    watchlist: [...holdings]
-      .sort((a, b) => b.marketValue - a.marketValue || a.symbol.localeCompare(b.symbol))
-      .flatMap((holding) => {
-        const quote = quotes.find((row) => row.symbol === holding.symbol);
-        return quote ? [quote] : [];
-      }),
-    indices: MARKET_TAPE_SYMBOLS.flatMap((symbol) => {
-      const quote = quotes.find((row) => row.symbol === symbol);
-      return quote ? [quote] : [];
-    }),
-    trades: [...portfolio.trades].sort(
-      (a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),
-    ),
-    capital: summarizeCapital(portfolio.capital, totals.netValue),
-    year: summarizeYear(totals.netValue, portfolio.yearStart, portfolio.capital),
-    totals,
-  };
+  const snapshot = viewSnapshot(portfolio, quotes);
+  snapshot.quotesError = quotesError;
   lastGood = snapshot;
   return snapshot;
 }
