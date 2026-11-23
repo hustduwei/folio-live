@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "cash": 1267.32,
+  "cash": 777.32,
   "capital": [
     {
       "id": "cap-principal",
@@ -327,6 +327,16 @@
       "shares": 3,
       "price": 411,
       "executedAt": "2026-11-02T15:00:00.000Z",
+      "affectsCash": true
+    },
+    {
+      "id": "cacc1114-8f9a-40f6-b5d4-27ac83e9f737",
+      "symbol": "RKLB",
+      "name": "Rocket Lab",
+      "side": "buy",
+      "shares": 10,
+      "price": 49,
+      "executedAt": "2026-11-20T15:00:00.000Z",
       "affectsCash": true
     }
   ]
