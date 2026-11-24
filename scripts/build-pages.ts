@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { buildEquityCurve, fetchDailyCloses } from "../src/lib/equity";
 import { MARKET_TAPE_SYMBOLS } from "../src/lib/markets";
 import { readPortfolio } from "../src/lib/portfolio";
 import { fetchQuotes, normalizeSymbol } from "../src/lib/quotes";
@@ -59,11 +60,19 @@ async function main(): Promise<void> {
     ]),
   ];
   const quotes = await fetchQuotes(symbols);
+  const held = [...new Set(portfolio.trades.map((trade) => normalizeSymbol(trade.symbol)))];
+  const closes = await fetchDailyCloses(held);
+  const equity = buildEquityCurve(portfolio, closes);
+  await writeFile(
+    path.join(process.cwd(), "data", "equity.json"),
+    `${JSON.stringify({ points: equity }, null, 2)}\n`,
+    "utf8",
+  );
   const snapshot = viewSnapshot(portfolio, quotes);
   const outDir = path.join(process.cwd(), "docs");
   await mkdir(outDir, { recursive: true });
   const dashboard = renderPage(snapshot, {
-    books: { portfolio, fallback: quotes },
+    books: { portfolio, fallback: quotes, equity },
     scriptSrc: `live.js?v=${Date.now()}`,
   });
   await writeFile(path.join(outDir, "index.html"), gate(dashboard), "utf8");

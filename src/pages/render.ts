@@ -13,11 +13,14 @@ import {
 import { marketTapeItem, showsOvernightPrice } from "../lib/markets";
 import { tileColor } from "../lib/sectors";
 import { squarify } from "../lib/treemap";
-import type { Holding, PortfolioFile, Quote, SectorGroup, Snapshot } from "../lib/types";
+import { EQUITY_CHART, equitySvg } from "../lib/equity-chart";
+import { stampEquity } from "../lib/equity";
+import type { EquityPoint, Holding, PortfolioFile, Quote, SectorGroup, Snapshot } from "../lib/types";
 
 export type PageBooks = {
   portfolio: PortfolioFile;
   fallback: Quote[];
+  equity?: EquityPoint[];
 };
 
 function esc(value: string): string {
@@ -288,6 +291,41 @@ function indexTape(snapshot: Snapshot): string {
     .join("");
 }
 
+function equityDateLabel(date: string): string {
+  const [, month, day] = date.split("-");
+  return `${Number(month)}月${Number(day)}日`;
+}
+
+function equitySection(snapshot: Snapshot, points: EquityPoint[]): string {
+  const series = stampEquity(points, snapshot.totals.netValue, snapshot.market.nyDate);
+  if (series.length < 2) return "";
+  const first = series[0];
+  const last = series[series.length - 1];
+  const change = last.nav - first.nav;
+  const percent = first.nav > 0 ? (change / first.nav) * 100 : 0;
+  const peak = Math.max(...series.map((point) => point.nav));
+  const trough = Math.min(...series.map((point) => point.nav));
+  const yearStart = snapshot.year?.startUsd;
+  const payload = JSON.stringify({ points: series, yearStart: yearStart ?? null }).replaceAll("<", "\\u003c");
+  return `
+    <div class="head"><h2>账户收益</h2><span>${esc(equityDateLabel(first.date))}以来的净值 · 每日收盘，最后一点是当前报价</span></div>
+    <section class="curve">
+      <div class="curve-top">
+        <div>
+          <p class="kicker">区间收益 <em>Equity</em></p>
+          <p class="stat" style="color:${tone(change)}">${esc(formatSignedUsdWhole(change))}</p>
+          <p class="hint">${esc(formatPercent(percent))} · 净值 ${esc(formatUsdWhole(first.nav))} → ${esc(formatUsdWhole(last.nav))}</p>
+        </div>
+        <div class="curve-range">
+          <span>最高 ${esc(formatUsdWhole(peak))}</span>
+          <span>最低 ${esc(formatUsdWhole(trough))}</span>
+        </div>
+      </div>
+      <div class="curve-plot" data-width="${EQUITY_CHART.width}" data-pad-left="${EQUITY_CHART.pad.l}" data-pad-right="${EQUITY_CHART.pad.r}">${equitySvg(series, yearStart ?? null)}</div>
+      <script id="equity-points" type="application/json">${payload}</script>
+    </section>`;
+}
+
 function tape(snapshot: Snapshot): string {
   return (snapshot.watchlist ?? [])
     .map(
@@ -400,6 +438,14 @@ export function renderPage(
     th:first-child, td:first-child { text-align: left; }
     td b, .kicker em { font-family: "JetBrains Mono", ui-monospace, monospace; }
     td small { display: block; color: var(--muted); font-family: "Noto Sans SC", "PingFang SC", sans-serif; }
+    .curve { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 10px 30px rgba(26, 31, 54, .04); padding: 16px 16px 8px; }
+    .curve-top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; }
+    .curve-range { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; color: var(--muted); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; }
+    .curve-plot { position: relative; height: 280px; margin-top: 8px; }
+    .curve-plot svg { display: block; width: 100%; height: 100%; }
+    .curve-tip { position: absolute; z-index: 2; pointer-events: none; transform: translate(-50%, -120%); background: #172033; color: #fff; border-radius: 10px; padding: 6px 8px; font-size: 12px; white-space: nowrap; }
+    .curve-tip b { display: block; font-family: "JetBrains Mono", ui-monospace, monospace; }
+    .curve-line { position: absolute; top: 16px; bottom: 28px; width: 1px; background: rgba(26,31,54,.25); pointer-events: none; }
     .panel { padding: 8px 16px 12px; overflow-x: auto; }
     .ledger { list-style: none; margin: 0; padding: 0; }
     .ledger li { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 12px 4px; border-bottom: 1px solid var(--line); font-size: 14px; }
@@ -412,6 +458,9 @@ export function renderPage(
     @media (max-width: 900px) {
       .tiles, .tape, .indices { grid-template-columns: 1fr 1fr; }
       .alloc-row { grid-template-columns: 1fr; }
+      .curve-top { flex-direction: column; align-items: flex-start; }
+      .curve-range { align-items: flex-start; }
+      .curve-plot { height: 230px; }
     }
   </style>
 </head>
@@ -424,6 +473,7 @@ export function renderPage(
     <h1>持仓全景图</h1>
     <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 行情时间 北京时间 ${esc(when)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
+    ${equitySection(snapshot, options.books?.equity ?? [])}
     <div class="head"><h2>大盘</h2><span>较上一交易日收盘 · 与今日同一口径。没拿到新价时，行情时间保持不变</span></div>
     <section class="indices">${indexTape(snapshot)}</section>
     <div class="head"><h2>持仓地图</h2><span>方块面积 = 仓位占比</span></div>

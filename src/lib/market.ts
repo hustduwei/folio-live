@@ -27,6 +27,11 @@ function nyParts(date = new Date()) {
   };
 }
 
+export function newYorkDate(date = new Date()): string {
+  const ny = nyParts(date);
+  return `${ny.year}-${ny.month}-${ny.day}`;
+}
+
 export function getMarketClock(date = new Date()): MarketClock {
   const ny = nyParts(date);
   const minutes = ny.hour * 60 + ny.minute;

@@ -145,6 +145,11 @@ export type SectorGroup = SectorMeta & {
   holdings: SectorHoldingRow[];
 };
 
+export type EquityPoint = {
+  date: string;
+  nav: number;
+};
+
 export type Snapshot = {
   fetchedAt: string;
   market: MarketClock;
