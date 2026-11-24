@@ -168,6 +168,7 @@ function refreshQuotes(unique: string[], cacheKey: string): Promise<Quote[]> {
 async function loadQuotes(unique: string[]): Promise<Quote[]> {
   const hosts = ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"];
   const bySymbol = new Map<string, Quote>();
+  const regularCloses = new Map<string, CloseMark>();
 
   for (const host of hosts) {
     try {
@@ -179,7 +180,10 @@ async function loadQuotes(unique: string[]): Promise<Quote[]> {
         const symbol = normalizeSymbol(row.symbol || meta?.symbol || "");
         if (!meta || !symbol) continue;
         const quote = toQuote(symbol, meta, sparkCloses(row));
-        if (quote) bySymbol.set(symbol, quote);
+        if (quote) {
+          noteRegularClose(regularCloses, symbol, meta);
+          bySymbol.set(symbol, quote);
+        }
       }
       if (bySymbol.size === unique.length) break;
     } catch {
@@ -210,6 +214,7 @@ async function loadQuotes(unique: string[]): Promise<Quote[]> {
             );
             const quote = toQuote(symbol, result.meta, closes);
             if (quote) {
+              noteRegularClose(regularCloses, symbol, result.meta);
               bySymbol.set(symbol, quote);
               return;
             }
@@ -226,7 +231,15 @@ async function loadQuotes(unique: string[]): Promise<Quote[]> {
   const quotes = unique
     .map((symbol) => bySymbol.get(symbol) ?? lastQuotes.get(symbol))
     .filter((quote): quote is Quote => Boolean(quote));
-  return applySettlementBaselines(quotes);
+  return applySettlementBaselines(quotes, regularCloses);
+}
+
+function noteRegularClose(closes: Map<string, CloseMark>, symbol: string, meta: YahooSparkMeta) {
+  const price = Number(meta.regularMarketPrice);
+  const time = Number(meta.regularMarketTime);
+  if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(time) || time <= 0) return;
+  const known = closes.get(symbol);
+  if (!known || time >= known.time) closes.set(symbol, { price, time });
 }
 
 type SessionPrint = { price: number; time: number };
@@ -339,10 +352,12 @@ type ChartBar = {
   close?: Array<number | null>;
 };
 
-const BASELINE_CACHE_MS = 5 * 60 * 1000;
-let baselineCache: { settlement: number; until: number; prices: Map<string, number> } | null = null;
+type CloseMark = { price: number; time: number };
 
-function closeAtOrBefore(bars: ChartBar, settlementSec: number): number | null {
+const BASELINE_CACHE_MS = 5 * 60 * 1000;
+let baselineCache: { settlement: number; until: number; prices: Map<string, CloseMark> } | null = null;
+
+function closeAtOrBefore(bars: ChartBar, settlementSec: number): CloseMark | null {
   const timestamps = bars.timestamp ?? [];
   const closes = bars.close ?? [];
   let bestTs = -1;
@@ -358,10 +373,10 @@ function closeAtOrBefore(bars: ChartBar, settlementSec: number): number | null {
       best = close;
     }
   }
-  return best;
+  return best == null ? null : { price: best, time: bestTs };
 }
 
-async function settlementPrint(symbol: string, settlementSec: number): Promise<number | null> {
+async function settlementPrint(symbol: string, settlementSec: number): Promise<CloseMark | null> {
   const hosts = ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"];
   for (const host of hosts) {
     try {
@@ -388,7 +403,10 @@ async function settlementPrint(symbol: string, settlementSec: number): Promise<n
   return null;
 }
 
-async function applySettlementBaselines(quotes: Quote[]): Promise<Quote[]> {
+async function applySettlementBaselines(
+  quotes: Quote[],
+  regularCloses: Map<string, CloseMark> = new Map(),
+): Promise<Quote[]> {
   if (quotes.length === 0) return quotes;
   const settlement = lastSettlementAt();
   const settlementSec = Math.floor(settlement.getTime() / 1000);
@@ -396,27 +414,31 @@ async function applySettlementBaselines(quotes: Quote[]): Promise<Quote[]> {
   const cached =
     baselineCache && baselineCache.settlement === settlement.getTime() && baselineCache.until > now
       ? baselineCache.prices
-      : new Map<string, number>();
+      : new Map<string, CloseMark>();
   const missing = quotes.map((quote) => quote.symbol).filter((symbol) => !cached.has(symbol));
   if (missing.length > 0) {
     const found = await Promise.all(
       missing.map(async (symbol) => [symbol, await settlementPrint(symbol, settlementSec)] as const),
     );
-    for (const [symbol, price] of found) {
-      if (price != null) cached.set(symbol, price);
+    for (const [symbol, mark] of found) {
+      if (mark != null) cached.set(symbol, mark);
     }
     baselineCache = { settlement: settlement.getTime(), until: now + BASELINE_CACHE_MS, prices: cached };
   }
 
   return quotes.map((quote) => {
-    const baseline = cached.get(quote.symbol);
-    if (baseline == null || baseline === 0) return quote;
-    const change = quote.price - baseline;
+    let baseline = cached.get(quote.symbol);
+    const regular = regularCloses.get(quote.symbol);
+    if (regular && regular.time <= settlementSec && (!baseline || regular.time > baseline.time)) {
+      baseline = regular;
+    }
+    if (baseline == null || baseline.price === 0) return quote;
+    const change = quote.price - baseline.price;
     return {
       ...quote,
-      previousClose: baseline,
+      previousClose: baseline.price,
       change,
-      changePercent: (change / baseline) * 100,
+      changePercent: (change / baseline.price) * 100,
     };
   });
 }

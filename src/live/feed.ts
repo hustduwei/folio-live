@@ -62,7 +62,15 @@ export function pickLiveQuote(fresh: Quote | null, fallback: Quote | undefined, 
   const candidates = [fresh, fallback].filter((quote): quote is Quote => Boolean(quote && quote.price > 0));
   if (candidates.length === 0) return null;
   const newest = candidates.reduce((best, quote) => (quoteMillis(quote) >= quoteMillis(best) ? quote : best));
-  const baseline = quoteMillis(newest) >= lastSettlementAt(now).getTime() ? newest.previousClose : newest.price;
+  const dayStart = lastSettlementAt(now).getTime();
+  if (!(quoteMillis(newest) >= dayStart)) return withBaseline(newest, newest.price);
+  const anchor = candidates.reduce<Quote | undefined>((best, quote) => {
+    const time = quoteMillis(quote);
+    if (!(time <= dayStart)) return best;
+    if (!best || time > quoteMillis(best)) return quote;
+    return best;
+  }, undefined);
+  const baseline = anchor?.price ?? (newest.previousClose > 0 ? newest.previousClose : newest.price);
   return withBaseline(newest, baseline);
 }
 
