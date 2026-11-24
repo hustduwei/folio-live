@@ -30,34 +30,40 @@ export function parseTencentClock(raw: string): Date | null {
   );
 }
 
-/** Previous close once a print belongs to the session that started at 20:00 ET. */
+/** Previous close carried by a quote that already belongs to the current Longbridge day. */
 export function settlementBaseline(price: number, feedPrev: number): number {
   return Number.isFinite(feedPrev) && feedPrev > 0 ? feedPrev : price;
 }
 
-function inNewSession(quote: Quote | null | undefined, settlementMs: number): boolean {
-  if (!quote?.marketTime) return false;
+function quoteMillis(quote: Quote | null | undefined): number {
+  if (!quote?.marketTime) return Number.NEGATIVE_INFINITY;
   const time = Date.parse(quote.marketTime);
-  return Number.isFinite(time) && time >= settlementMs;
+  return Number.isFinite(time) ? time : Number.NEGATIVE_INFINITY;
+}
+
+function withBaseline(quote: Quote, baseline: number): Quote {
+  if (!Number.isFinite(baseline) || baseline <= 0) return quote;
+  const change = quote.price - baseline;
+  return {
+    ...quote,
+    previousClose: baseline,
+    change,
+    changePercent: (change / baseline) * 100,
+  };
 }
 
 /**
- * Longbridge rolls today's P&L at 20:00 ET. The baseline becomes that session's
- * close, and the latest price includes the overnight print. A feed still showing
- * the previous regular close must not be reused as today's move.
+ * Longbridge, with overnight pricing on, runs a US day from 20:00 ET to the next
+ * 20:00 ET. The latest price includes the regular session, post-market, and the
+ * overnight session. At 20:00 the day resets against that session's close.
+ * A print from before the reset is not reused as the new day's move.
  */
 export function pickLiveQuote(fresh: Quote | null, fallback: Quote | undefined, now = new Date()): Quote | null {
-  const settlementMs = lastSettlementAt(now).getTime();
-  if (fresh && inNewSession(fresh, settlementMs)) return fresh;
-  if (fallback && inNewSession(fallback, settlementMs)) return fallback;
-  const prior = fresh ?? fallback ?? null;
-  if (!prior) return null;
-  return {
-    ...prior,
-    previousClose: prior.price,
-    change: 0,
-    changePercent: 0,
-  };
+  const candidates = [fresh, fallback].filter((quote): quote is Quote => Boolean(quote && quote.price > 0));
+  if (candidates.length === 0) return null;
+  const newest = candidates.reduce((best, quote) => (quoteMillis(quote) >= quoteMillis(best) ? quote : best));
+  const baseline = quoteMillis(newest) >= lastSettlementAt(now).getTime() ? newest.previousClose : newest.price;
+  return withBaseline(newest, baseline);
 }
 
 export function quoteFromTencent(
@@ -70,7 +76,8 @@ export function quoteFromTencent(
   const price = Number(parts[3]);
   const feedPrev = Number(parts[4]);
   if (!Number.isFinite(price) || price <= 0) return null;
-  const at = parseTencentClock(parts[30] ?? "") ?? now;
+  const at = parseTencentClock(parts[30] ?? "");
+  const marketTime = at?.toISOString() ?? fallback?.marketTime ?? null;
   const previousClose = settlementBaseline(price, feedPrev);
   const change = price - previousClose;
   const high = Number(parts[33]);
@@ -88,7 +95,7 @@ export function quoteFromTencent(
     dayLow: Number.isFinite(low) ? low : null,
     volume: Number.isFinite(volume) ? volume : null,
     spark: fallback?.spark ?? [],
-    marketTime: at.toISOString(),
+    marketTime,
   };
 }
 

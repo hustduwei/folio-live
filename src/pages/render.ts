@@ -276,7 +276,7 @@ function indexTape(snapshot: Snapshot): string {
     .map((quote) => {
       const item = marketTapeItem(quote.symbol);
       const price = item?.dollars ? formatUsdPrecise(quote.price) : formatPoints(quote.price);
-      const overnight = showsOvernightPrice(quote.marketTime, snapshot.market.state, new Date(snapshot.fetchedAt));
+      const overnight = showsOvernightPrice(quote.marketTime, snapshot.market.state);
       const percent = Math.round(quote.changePercent * 100) / 100;
       return `
       <article class="tile" style="--c:${tone(percent)}">
@@ -422,9 +422,9 @@ export function renderPage(
       <button class="refresh" id="refresh" type="button">刷新</button>
     </div>
     <h1>持仓全景图</h1>
-    <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 更新于北京时间 ${esc(when)}</p>
+    <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 行情时间 北京时间 ${esc(when)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
-    <div class="head"><h2>大盘</h2><span>较上一交易日收盘 · 与今日同一口径，页面打开后约每 5 秒更新</span></div>
+    <div class="head"><h2>大盘</h2><span>较上一交易日收盘 · 与今日同一口径。没拿到新价时，行情时间保持不变</span></div>
     <section class="indices">${indexTape(snapshot)}</section>
     <div class="head"><h2>持仓地图</h2><span>方块面积 = 仓位占比</span></div>
     <section class="mapwrap">${mapBlocks(snapshot)}</section>
