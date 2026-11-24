@@ -291,37 +291,32 @@ function indexTape(snapshot: Snapshot): string {
     .join("");
 }
 
-function equityDateLabel(date: string): string {
-  const [, month, day] = date.split("-");
-  return `${Number(month)}月${Number(day)}日`;
-}
-
 function equitySection(snapshot: Snapshot, points: EquityPoint[]): string {
   const series = stampEquity(points, snapshot.totals.netValue, snapshot.market.nyDate);
-  if (series.length < 2) return "";
-  const first = series[0];
-  const last = series[series.length - 1];
-  const change = last.nav - first.nav;
-  const percent = first.nav > 0 ? (change / first.nav) * 100 : 0;
-  const peak = Math.max(...series.map((point) => point.nav));
-  const trough = Math.min(...series.map((point) => point.nav));
-  const yearStart = snapshot.year?.startUsd;
-  const payload = JSON.stringify({ points: series, yearStart: yearStart ?? null }).replaceAll("<", "\\u003c");
+  const yearStart = snapshot.year?.startUsd ?? 0;
+  if (series.length < 2 || !(yearStart > 0)) return "";
+  const ytd = (nav: number) => nav - yearStart;
+  const change = ytd(series[series.length - 1].nav);
+  const percent = (change / yearStart) * 100;
+  const marks = series.map((point) => ytd(point.nav));
+  const peak = Math.max(...marks);
+  const trough = Math.min(...marks);
+  const payload = JSON.stringify({ points: series, yearStart }).replaceAll("<", "\\u003c");
   return `
-    <div class="head"><h2>账户收益</h2><span>${esc(equityDateLabel(first.date))}以来的净值 · 每日收盘，最后一点是当前报价</span></div>
+    <div class="head"><h2>年度收益</h2><span>相对年初 ${esc(formatUsdWhole(yearStart))} · 每日收盘，最后一点是当前报价</span></div>
     <section class="curve">
       <div class="curve-top">
         <div>
-          <p class="kicker">区间收益 <em>Equity</em></p>
+          <p class="kicker">今年 <em>YTD</em></p>
           <p class="stat" style="color:${tone(change)}">${esc(formatSignedUsdWhole(change))}</p>
-          <p class="hint">${esc(formatPercent(percent))} · 净值 ${esc(formatUsdWhole(first.nav))} → ${esc(formatUsdWhole(last.nav))}</p>
+          <p class="hint">${esc(formatPercent(percent))} · 零线是年初账面</p>
         </div>
         <div class="curve-range">
-          <span>最高 ${esc(formatUsdWhole(peak))}</span>
-          <span>最低 ${esc(formatUsdWhole(trough))}</span>
+          <span>最高 ${esc(formatSignedUsdWhole(peak))}</span>
+          <span>最低 ${esc(formatSignedUsdWhole(trough))}</span>
         </div>
       </div>
-      <div class="curve-plot" data-width="${EQUITY_CHART.width}" data-pad-left="${EQUITY_CHART.pad.l}" data-pad-right="${EQUITY_CHART.pad.r}">${equitySvg(series, yearStart ?? null)}</div>
+      <div class="curve-plot" data-width="${EQUITY_CHART.width}" data-pad-left="${EQUITY_CHART.pad.l}" data-pad-right="${EQUITY_CHART.pad.r}">${equitySvg(series, yearStart)}</div>
       <script id="equity-points" type="application/json">${payload}</script>
     </section>`;
 }
@@ -473,7 +468,6 @@ export function renderPage(
     <h1>持仓全景图</h1>
     <p class="sub">${snapshot.holdings.length} 个标的${year ? ` · 今年 ${formatPercent(year.ytdPercent)}` : ""}${capital?.netCapitalUsd ? ` · 账户 ${formatPercent(capital.vsCapitalPercent)}` : ""} · 现金 ${formatUsd(snapshot.totals.cash)} · 行情时间 北京时间 ${esc(when)}</p>
     <section class="tiles">${tiles(snapshot)}</section>
-    ${equitySection(snapshot, options.books?.equity ?? [])}
     <div class="head"><h2>大盘</h2><span>较上一交易日收盘 · 与今日同一口径。没拿到新价时，行情时间保持不变</span></div>
     <section class="indices">${indexTape(snapshot)}</section>
     <div class="head"><h2>持仓地图</h2><span>方块面积 = 仓位占比</span></div>
@@ -481,6 +475,7 @@ export function renderPage(
     <div class="head"><h2>板块配置</h2><span>红涨绿跌</span></div>
     <div class="bar">${sectorBar(snapshot.sectors)}</div>
     <section class="alloc">${sectorCards(snapshot.sectors)}</section>
+    ${equitySection(snapshot, options.books?.equity ?? [])}
     <div class="head"><h2>行情条</h2><span>按持仓市值从大到小 · 已清仓不显示</span></div>
     <section class="tape">${tape(snapshot)}</section>
     <div class="head"><h2>持仓明细</h2><span>按最新报价重估</span></div>

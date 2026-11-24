@@ -76,9 +76,13 @@ function bindEquityChart(): void {
   const plot = document.querySelector<HTMLElement>(".curve-plot");
   const data = document.getElementById("equity-points");
   if (!plot || !data?.textContent || plot.dataset.bound === "1") return;
-  const parsed = JSON.parse(data.textContent) as { points?: { date: string; nav: number }[] };
+  const parsed = JSON.parse(data.textContent) as {
+    points?: { date: string; nav: number }[];
+    yearStart?: number;
+  };
   const points = parsed.points ?? [];
-  if (points.length < 2) return;
+  const yearStart = parsed.yearStart ?? 0;
+  if (points.length < 2 || !(yearStart > 0)) return;
   plot.dataset.bound = "1";
   const tip = document.createElement("div");
   tip.className = "curve-tip";
@@ -99,12 +103,14 @@ function bindEquityChart(): void {
     const index = Math.round(ratio * (points.length - 1));
     const point = points[index];
     const previous = points[Math.max(0, index - 1)];
+    const ytd = point.nav - yearStart;
     const dayChange = index === 0 ? 0 : point.nav - previous.nav;
+    const percent = (ytd / yearStart) * 100;
     const [, month, day] = point.date.split("-");
-    const sign = dayChange > 0 ? "+" : "";
+    const sign = (value: number) => (value > 0 ? "+" : "");
     tip.hidden = false;
     marker.hidden = false;
-    tip.innerHTML = `<b>${Number(month)}月${Number(day)}日</b>净值 $${Math.round(point.nav).toLocaleString("en-US")}<br>较前一日 ${sign}$${Math.round(dayChange).toLocaleString("en-US")}`;
+    tip.innerHTML = `<b>${Number(month)}月${Number(day)}日</b>年度收益 ${sign(ytd)}$${Math.round(ytd).toLocaleString("en-US")} · ${sign(percent)}${percent.toFixed(2)}%<br>较前一日 ${sign(dayChange)}$${Math.round(dayChange).toLocaleString("en-US")}`;
     const x = padLeft + ratio * inner;
     const left = (x / width) * box.width;
     tip.style.left = `${left}px`;
