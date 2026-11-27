@@ -76,6 +76,11 @@ async function main(): Promise<void> {
     scriptSrc: `live.js?v=${Date.now()}`,
   });
   await writeFile(path.join(outDir, "index.html"), gate(dashboard), "utf8");
+  await writeFile(
+    path.join(outDir, "quotes.json"),
+    `${JSON.stringify({ quotes })}\n`,
+    "utf8",
+  );
   await esbuild.build({
     entryPoints: [path.join(process.cwd(), "src/live/boot.ts")],
     bundle: true,

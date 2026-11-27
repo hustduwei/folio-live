@@ -2,7 +2,7 @@ import { MARKET_TAPE_SYMBOLS } from "../lib/markets";
 import { normalizeSymbol } from "../lib/quotes";
 import { viewSnapshot } from "../lib/view";
 import type { PortfolioFile, Quote } from "../lib/types";
-import { loadTencentQuotes } from "./feed";
+import { loadTencentQuotes, pickLiveQuote } from "./feed";
 import { renderPage, type PageBooks } from "../pages/render";
 
 const POLL_MS = 5_000;
@@ -38,7 +38,16 @@ async function redraw(manual: boolean): Promise<void> {
         ...MARKET_TAPE_SYMBOLS,
       ]),
     ];
-    const quotes = await loadTencentQuotes(symbols, books.fallback);
+    const serverPromise = loadServerQuotes();
+    let live: Quote[] | null = null;
+    try {
+      live = await loadTencentQuotes(symbols, books.fallback);
+    } catch {
+      live = null;
+    }
+    const server = await serverPromise;
+    if (!live && server.length === 0) throw new Error("行情加载失败");
+    const quotes = mergeNewer(live ?? books.fallback, server);
     const nextKey = priceKey(quotes);
     if (!manual && nextKey === sessionStorage.getItem("folio-prices")) return;
     sessionStorage.setItem("folio-prices", nextKey);
@@ -70,6 +79,33 @@ function mergeQuotes(fallback: Quote[], fresh: Quote[]): Quote[] {
   const bySymbol = new Map(fallback.map((quote) => [normalizeSymbol(quote.symbol), quote]));
   for (const quote of fresh) bySymbol.set(normalizeSymbol(quote.symbol), quote);
   return [...bySymbol.values()];
+}
+
+async function loadServerQuotes(): Promise<Quote[]> {
+  try {
+    const response = await fetch(`quotes.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return [];
+    const body = (await response.json()) as { quotes?: Quote[] };
+    return Array.isArray(body.quotes) ? body.quotes : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Keep the newer print. A stale regular close must not wipe a published overnight price. */
+function mergeNewer(primary: Quote[], extra: Quote[], now = new Date()): Quote[] {
+  const extraBySymbol = new Map(extra.map((quote) => [normalizeSymbol(quote.symbol), quote]));
+  const seen = new Set<string>();
+  const merged = primary.map((quote) => {
+    const symbol = normalizeSymbol(quote.symbol);
+    seen.add(symbol);
+    return pickLiveQuote(quote, extraBySymbol.get(symbol), now) ?? quote;
+  });
+  for (const quote of extra) {
+    const symbol = normalizeSymbol(quote.symbol);
+    if (!seen.has(symbol)) merged.push(quote);
+  }
+  return merged;
 }
 
 function bindEquityChart(): void {
