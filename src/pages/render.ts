@@ -436,11 +436,12 @@ export function renderPage(
     .curve { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 10px 30px rgba(26, 31, 54, .04); padding: 16px 16px 8px; }
     .curve-top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; }
     .curve-range { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; color: var(--muted); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; }
-    .curve-plot { position: relative; height: 280px; margin-top: 8px; }
+    .curve-plot { position: relative; aspect-ratio: 1000 / 320; height: auto; margin-top: 8px; }
     .curve-plot svg { display: block; width: 100%; height: 100%; }
-    .curve-tip { position: absolute; z-index: 2; pointer-events: none; transform: translate(-50%, -120%); background: #172033; color: #fff; border-radius: 10px; padding: 6px 8px; font-size: 12px; white-space: nowrap; }
+    .curve-tip { position: absolute; z-index: 2; pointer-events: none; transform: translate(-50%, -130%); background: #172033; color: #fff; border-radius: 10px; padding: 6px 8px; font-size: 12px; white-space: nowrap; }
     .curve-tip b { display: block; font-family: "JetBrains Mono", ui-monospace, monospace; }
-    .curve-line { position: absolute; top: 16px; bottom: 28px; width: 1px; background: rgba(26,31,54,.25); pointer-events: none; }
+    .curve-line { position: absolute; top: 0; bottom: 0; width: 1px; margin-left: -0.5px; background: rgba(26,31,54,.25); pointer-events: none; }
+    .curve-dot { position: absolute; z-index: 2; width: 10px; height: 10px; margin: -5px 0 0 -5px; border: 2px solid #fff; border-radius: 99px; background: #172033; box-shadow: 0 0 0 1px rgba(26,31,54,.25); pointer-events: none; }
     .panel { padding: 8px 16px 12px; overflow-x: auto; }
     .ledger { list-style: none; margin: 0; padding: 0; }
     .ledger li { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 12px 4px; border-bottom: 1px solid var(--line); font-size: 14px; }
@@ -455,7 +456,6 @@ export function renderPage(
       .alloc-row { grid-template-columns: 1fr; }
       .curve-top { flex-direction: column; align-items: flex-start; }
       .curve-range { align-items: flex-start; }
-      .curve-plot { height: 230px; }
     }
   </style>
 </head>

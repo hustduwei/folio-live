@@ -80,6 +80,12 @@ export function equitySvg(points: EquityPoint[], baseline: number): string {
     .join("");
   const end = values[values.length - 1];
   const endColor = end >= 0 ? "#C41414" : "#16A34A";
+  const hits = points
+    .map(
+      (_, index) =>
+        `<circle class="curve-hit" data-i="${index}" cx="${xAt(index).toFixed(1)}" cy="${yAt(values[index]).toFixed(1)}" r="7" fill="transparent" />`,
+    )
+    .join("");
   return `<svg viewBox="0 0 ${WIDTH} ${HEIGHT}" role="img" aria-label="年度收益曲线">
     ${grid}
     <line x1="${PAD.l}" y1="${zeroY.toFixed(1)}" x2="${WIDTH - PAD.r}" y2="${zeroY.toFixed(1)}" stroke="#1a1f36" stroke-dasharray="4 4" stroke-width="1.25" />
@@ -89,6 +95,7 @@ export function equitySvg(points: EquityPoint[], baseline: number): string {
     <path d="${red.join(" ")}" fill="none" stroke="#C41414" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     <path d="${green.join(" ")}" fill="none" stroke="#16A34A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     <circle cx="${xAt(points.length - 1).toFixed(1)}" cy="${yAt(end).toFixed(1)}" r="5" fill="${endColor}" />
+    ${hits}
     ${labels}
   </svg>`;
 }

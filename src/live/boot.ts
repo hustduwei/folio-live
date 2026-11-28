@@ -119,6 +119,8 @@ function bindEquityChart(): void {
   const points = parsed.points ?? [];
   const yearStart = parsed.yearStart ?? 0;
   if (points.length < 2 || !(yearStart > 0)) return;
+  const hits = [...plot.querySelectorAll<SVGCircleElement>(".curve-hit")];
+  if (hits.length !== points.length) return;
   plot.dataset.bound = "1";
   const tip = document.createElement("div");
   tip.className = "curve-tip";
@@ -126,17 +128,27 @@ function bindEquityChart(): void {
   const marker = document.createElement("div");
   marker.className = "curve-line";
   marker.hidden = true;
-  plot.append(tip, marker);
-  const width = Number(plot.dataset.width || "1000");
-  const padLeft = Number(plot.dataset.padLeft || "8");
-  const padRight = Number(plot.dataset.padRight || "78");
+  const dot = document.createElement("div");
+  dot.className = "curve-dot";
+  dot.hidden = true;
+  plot.append(tip, marker, dot);
 
   const show = (clientX: number) => {
     const box = plot.getBoundingClientRect();
-    const local = ((clientX - box.left) / box.width) * width;
-    const inner = width - padLeft - padRight;
-    const ratio = Math.min(1, Math.max(0, (local - padLeft) / inner));
-    const index = Math.round(ratio * (points.length - 1));
+    let index = 0;
+    let best = Number.POSITIVE_INFINITY;
+    hits.forEach((hit, hitIndex) => {
+      const rect = hit.getBoundingClientRect();
+      const distance = Math.abs(clientX - (rect.left + rect.width / 2));
+      if (distance < best) {
+        best = distance;
+        index = hitIndex;
+      }
+    });
+    const hit = hits[index];
+    const rect = hit.getBoundingClientRect();
+    const left = rect.left + rect.width / 2 - box.left;
+    const top = rect.top + rect.height / 2 - box.top;
     const point = points[index];
     const previous = points[Math.max(0, index - 1)];
     const ytd = point.nav - yearStart;
@@ -144,14 +156,17 @@ function bindEquityChart(): void {
     const percent = (ytd / yearStart) * 100;
     const [, month, day] = point.date.split("-");
     const sign = (value: number) => (value > 0 ? "+" : "");
+    const shift = left < 96 ? "0%" : left > box.width - 96 ? "-100%" : "-50%";
     tip.hidden = false;
     marker.hidden = false;
+    dot.hidden = false;
+    tip.style.transform = `translate(${shift}, -130%)`;
     tip.innerHTML = `<b>${Number(month)}月${Number(day)}日</b>年度收益 ${sign(ytd)}$${Math.round(ytd).toLocaleString("en-US")} · ${sign(percent)}${percent.toFixed(2)}%<br>较前一日 ${sign(dayChange)}$${Math.round(dayChange).toLocaleString("en-US")}`;
-    const x = padLeft + ratio * inner;
-    const left = (x / width) * box.width;
     tip.style.left = `${left}px`;
-    tip.style.top = "28px";
+    tip.style.top = `${top}px`;
     marker.style.left = `${left}px`;
+    dot.style.left = `${left}px`;
+    dot.style.top = `${top}px`;
   };
 
   plot.addEventListener("pointermove", (event) => show(event.clientX));
@@ -159,6 +174,7 @@ function bindEquityChart(): void {
   plot.addEventListener("pointerleave", () => {
     tip.hidden = true;
     marker.hidden = true;
+    dot.hidden = true;
   });
 }
 
